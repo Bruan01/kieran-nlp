@@ -7,13 +7,13 @@ class ChatCore:
         self.api_key = api_key
         self.api_url = api_url
 
-    def chat(self, question):
+    def chat(self, question,model="deepseek-ai/DeepSeek-V3"):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         payload = {
-            "model": "deepseek-ai/DeepSeek-V3",
+            "model": model,
             "messages": [{"role": "user", "content": question}],
             "stream": True
         }

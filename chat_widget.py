@@ -8,19 +8,24 @@ import markdown
 
 class ChatWorker(QThread):
     finished = pyqtSignal(str)
-    def __init__(self, chat_core, question):
+    def __init__(self, chat_core, question,model_name ):
         super().__init__()
         self.chat_core = chat_core
         self.question = question
+        self.model_name = model_name
+        
     def run(self):
-        answer = self.chat_core.chat(self.question)
+        answer = self.chat_core.chat(self.question, model=self.model_name)
         self.finished.emit(answer)
 
 class ChatWidget(QWidget):
-    def __init__(self, chat_core):
+    def __init__(self, chat_core,get_model_func):
         super().__init__()
         self.chat_core = chat_core
         self.init_ui()
+        self.get_model_func = get_model_func
+    
+        
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -64,6 +69,7 @@ class ChatWidget(QWidget):
         msg_label.setTextFormat(Qt.RichText)
         msg_label.setWordWrap(True)
         msg_label.setMaximumWidth(500)
+        msg_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         if is_user:
             avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
             msg_label.setStyleSheet("background: #10a37f; color: white; border-radius: 8px; padding: 8px 16px;")
@@ -85,13 +91,9 @@ class ChatWidget(QWidget):
                 QToolTip.showText(copy_btn.mapToGlobal(copy_btn.rect().bottomRight()), "复制成功！", copy_btn)
                 QTimer.singleShot(1200, QToolTip.hideText)  # 1.2秒后自动消失
             copy_btn.clicked.connect(copy_and_notify)
-            # regen_btn = QPushButton("重新生成")
-            # regen_btn.setFixedSize(80, 28)
-            # regen_btn.setStyleSheet("background: #f1c40f; color: white; border-radius: 6px;")
-            # if question:
-                # regen_btn.clicked.connect(lambda: self.regenerate_answer(question, msg_layout))
+
             btn_layout.addWidget(copy_btn)
-            # btn_layout.addWidget(regen_btn)
+   
             btn_layout.addStretch()
             # 垂直布局：气泡在上，按钮在下
             bubble_layout = QVBoxLayout()
@@ -109,9 +111,10 @@ class ChatWidget(QWidget):
             self.add_message(question, is_user=True)
             self.rag_input.clear()
             # 显示加载提示
+            model = self.get_model_func()  # 动态获取
             self.add_message("嗯🤔,让我想想哈～", is_user=False)
             # 启动异步线程
-            self.worker = ChatWorker(self.chat_core, question)
+            self.worker = ChatWorker(self.chat_core, question,model_name = model)
             self.worker.finished.connect(lambda answer: self.on_answer(answer, question))
             self.worker.start()
 
@@ -127,19 +130,6 @@ class ChatWidget(QWidget):
         # 添加真正的回复，并带问题用于重新生成
         self.add_message(answer, is_user=False, question=question)
 
-    # def regenerate_answer(self, question, msg_layout):
-    #     # 显示加载提示
-    #     for i in reversed(range(msg_layout.count())):
-    #         widget = msg_layout.itemAt(i).widget()
-    #         if widget:
-    #             widget.deleteLater()
-    #     loading_label = QLabel("正在重新生成，请稍候...")
-    #     loading_label.setStyleSheet("background: #f1f1f1; color: #333; border-radius: 8px; padding: 8px 16px;")
-    #     msg_layout.addWidget(loading_label)
-    #     # 启动异步线程
-    #     worker = ChatWorker(self.chat_core, question)
-    #     worker.finished.connect(lambda answer: self.replace_answer(msg_layout, answer, question))
-    #     worker.start()
 
     def replace_answer(self, msg_layout, answer, question):
         # 清空旧内容
@@ -162,10 +152,6 @@ class ChatWidget(QWidget):
         copy_btn.setFixedSize(50, 28)
         copy_btn.setStyleSheet("background: #10a37f; color: white; border-radius: 6px;")
         copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(answer))
-        # regen_btn = QPushButton("重新生成")
-        # regen_btn.setFixedSize(80, 28)
-        # regen_btn.setStyleSheet("background: #f1c40f; color: white; border-radius: 6px;")
-        # regen_btn.clicked.connect(lambda: self.regenerate_answer(question, msg_layout))
         msg_layout.addWidget(avatar)
         msg_layout.addWidget(msg_label)
         msg_layout.addWidget(copy_btn)
