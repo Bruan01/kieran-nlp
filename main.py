@@ -68,11 +68,11 @@ class NLPDesktopApp(QMainWindow):
         api_url = os.getenv("API_URL")
         chat_core = ChatCore(api_key=api_key, api_url=api_url)
         get_model_func = lambda: self.api_combo.currentText()
-        self.rag_tab = ChatWidget(chat_core, get_model_func)
-        self.model_tab = QWidget()
+        self.model_tab = ChatWidget(chat_core, get_model_func)
+        self.rag_tab = QWidget()
         self.api_tab = QWidget()
-        self.tabs.addTab(self.rag_tab, "RAG 问答")
         self.tabs.addTab(self.model_tab, "模型推理")
+        self.tabs.addTab(self.rag_tab, "RAG 问答")
         self.tabs.addTab(self.api_tab, "API 控制台")
 
         # 主布局
@@ -100,7 +100,7 @@ class NLPDesktopApp(QMainWindow):
         """当模型切换时更新提示信息和ChatCore配置"""
         self.model_tip_label.setText(f"当前模型: {model_name}")
         # 更新ChatCore中的模型配置
-        self.rag_tab.chat_core.update_model(model_name)
+        self.model_tab.chat_core.update_model(model_name)
         
     def on_theme_changed(self, theme_name):
         """当主题切换时更新界面样式"""
@@ -244,7 +244,7 @@ class NLPDesktopApp(QMainWindow):
             self.setStyleSheet(tech_theme)
         
         # 通知聊天组件更新主题
-        self.rag_tab.update_theme(theme_name)
+        self.model_tab.update_theme(theme_name)
 
 
 if __name__ == "__main__":

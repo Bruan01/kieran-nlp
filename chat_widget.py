@@ -45,10 +45,10 @@ class ChatWidget(QWidget):
         self.scroll_area.setWidget(self.chat_widget)
 
         input_layout = QHBoxLayout()
-        self.rag_input = QTextEdit()
-        self.rag_input.setFixedHeight(50)
+        self.model_base_input = QTextEdit()
+        self.model_base_input.setFixedHeight(50)
         # 设置输入框样式
-        self.rag_input.setStyleSheet("""
+        self.model_base_input.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ccc;
                 border-radius: 12px;
@@ -57,9 +57,9 @@ class ChatWidget(QWidget):
                 background-color: rgba(255, 255, 255, 0.8);
             }
         """)
-        self.rag_button = QPushButton("发送")
+        self.model_base_button = QPushButton("发送")
         # 设置发送按钮样式
-        self.rag_button.setStyleSheet("""
+        self.model_base_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
                 color: white;
@@ -75,14 +75,16 @@ class ChatWidget(QWidget):
                 background-color: #3d8b40;
             }
         """)
-        input_layout.addWidget(self.rag_input)
-        input_layout.addWidget(self.rag_button)
+        input_layout.addWidget(self.model_base_input)
+        input_layout.addWidget(self.model_base_button)
 
         main_layout.addWidget(title)
         main_layout.addWidget(self.scroll_area)
         main_layout.addLayout(input_layout)
 
-        self.rag_button.clicked.connect(self.run_rag)
+        self.model_base_button.clicked.connect(self.run_model_base)
+        # 添加使用 Enter 键发送消息的功能
+        self.model_base_input.installEventFilter(self)
         self.setLayout(main_layout)
         
         # 初始化主题
@@ -170,13 +172,14 @@ class ChatWidget(QWidget):
             msg_layout.addLayout(bubble_layout)
             msg_layout.addStretch()
         self.chat_layout.addLayout(msg_layout)
-        self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
+        # 确保发送新消息后滚动到对话列表的最底部
+        QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum()))
 
-    def run_rag(self):
-        question = self.rag_input.toPlainText().strip()
+    def run_model_base(self):
+        question = self.model_base_input.toPlainText().strip()
         if question:
             self.add_message(question, is_user=True,show_copy=True)
-            self.rag_input.clear()
+            self.model_base_input.clear()
             # 显示加载提示
             model = self.get_model_func()  # 动态获取
             self.add_message("嗯🤔,让我想想哈～", is_user=False,show_copy=False)
@@ -184,6 +187,22 @@ class ChatWidget(QWidget):
             self.worker = ChatWorker(self.chat_core, question,model_name = model)
             self.worker.finished.connect(lambda answer: self.on_answer(answer, question))
             self.worker.start()
+    
+    def eventFilter(self, source, event):
+        # 添加使用 Enter 键发送消息的功能
+        if source == self.model_base_input and event.type() == event.KeyPress:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                # 检查是否按下了 Shift 键
+                if event.modifiers() & Qt.ShiftModifier:
+                    # 如果按下了 Shift 键，则插入换行符
+                    cursor = self.model_base_input.textCursor()
+                    cursor.insertText("\n")
+                    return True
+                else:
+                    # 如果没有按下 Shift 键，则发送消息
+                    self.run_model_base()
+                    return True
+        return super().eventFilter(source, event)
 
     def on_answer(self, answer, question):
         # 移除“嗯🤔 让我想想哈～”提示

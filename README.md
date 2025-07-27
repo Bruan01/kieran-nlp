@@ -44,8 +44,10 @@ Kieran NLP 是一个基于 PyQt5 的桌面 GUI 对话系统，支持多标签页
   ![alt text](./mdfile/image3.png)
 - 增加api切换功能
   ![alt text](./mdfile/image4.png)
-- 增加新的大模型api，增加主题功能，增加切换提醒
+- 增加新的大模型api，增加主题功能，增加切换提醒，修复了“复制”多次出现的问题
   ![alt text](./mdfile/image5.png)
+  ![alt text](./mdfile/image6.png)
+  
 
 
 ## 更新日志
@@ -54,7 +56,7 @@ Kieran NLP 是一个基于 PyQt5 的桌面 GUI 对话系统，支持多标签页
 - 2025-7-25 ：接入硅基流动API，实现deepseek对话
 - 2025-7-26 ：私有化api等敏感信息到env文件,支持markdown输出
 - 2025-7-27 ：增加api修改功能，你现在可以切换api了
-- 2025-7-28 ：增加新的大模型api，增加主题功能，增加切换提醒
+- 2025-7-28 ：增加新的大模型api，增加主题功能，增加切换提醒，修复了“复制”多次出现的问题，接入langchain实现对话记忆功能
 
 ## 目录结构示例
 
