@@ -25,13 +25,33 @@ class NLPDesktopApp(QMainWindow):
         # API切换
         api_label = QLabel("API 切换")
         self.api_combo = QComboBox()
-        self.api_combo.addItems(["deepseek-ai/DeepSeek-V3", "Qwen/QwQ-32B"])
+        self.api_combo.addItems(["deepseek-ai/DeepSeek-V3",
+        "Qwen/QwQ-32B",
+        "Qwen/Qwen3-235B-A22B-Instruct-2507",
+        "tencent/Hunyuan-A13B-Instruct",
+        "Tongyi-Zhiwen/QwenLong-L1-32B"])
+        
+        # 添加模型切换提示标签
+        self.model_tip_label = QLabel("")
+        self.model_tip_label.setStyleSheet("color: green; font-weight: bold;")
         
         sidebar_layout.addWidget(api_label)
         sidebar_layout.addWidget(self.api_combo)
+        sidebar_layout.addWidget(self.model_tip_label)
+        
+        # 连接信号槽，实现在切换模型时提醒用户
+        self.api_combo.currentTextChanged.connect(self.on_model_changed)
 
+        # 主题切换
+        theme_label = QLabel("主题切换")
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
+        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
+        
         # 用户状态
-        user_label = QLabel("用户：已登录")
+        user_label = QLabel("用户：已登录 授权码: MASHFEBHIWBDI221")
+        sidebar_layout.addWidget(theme_label)
+        sidebar_layout.addWidget(self.theme_combo)
         sidebar_layout.addWidget(user_label)
 
         # 对话列表
@@ -69,6 +89,112 @@ class NLPDesktopApp(QMainWindow):
 
         main_layout.addWidget(splitter)
         self.setCentralWidget(main_widget)
+        
+        # 初始化时显示当前模型
+        self.on_model_changed(self.api_combo.currentText())
+        
+        # 初始化默认主题
+        self.on_theme_changed(self.theme_combo.currentText())
+
+    def on_model_changed(self, model_name):
+        """当模型切换时更新提示信息"""
+        self.model_tip_label.setText(f"当前模型: {model_name}")
+        
+    def on_theme_changed(self, theme_name):
+        """当主题切换时更新界面样式"""
+        # 定义浅色主题样式
+        light_theme = """
+        QWidget {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        QTabWidget::pane {
+            border: 1px solid #ccc;
+        }
+        QTabBar::tab {
+            background: #e0e0e0;
+            padding: 8px 16px;
+        }
+        QTabBar::tab:selected {
+            background: #ffffff;
+        }
+        """
+        
+        # 定义深色主题样式
+        dark_theme = """
+        QWidget {
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+        QTabWidget::pane {
+            border: 1px solid #555;
+        }
+        QTabBar::tab {
+            background: #3d3d3d;
+            color: #ffffff;
+            padding: 8px 16px;
+        }
+        QTabBar::tab:selected {
+            background: #4d4d4d;
+        }
+        QLabel {
+            color: #ffffff;
+        }
+        """
+        
+        # 定义浅粉色少女心主题样式
+        pink_theme = """
+        QWidget {
+            background-color: #fff0f5;
+            color: #333;
+        }
+        QTabWidget::pane {
+            border: 1px solid #ffc0cb;
+        }
+        QTabBar::tab {
+            background: #ffc0cb;
+            color: #333;
+            padding: 8px 16px;
+        }
+        QTabBar::tab:selected {
+            background: #ffffff;
+        }
+        """
+        
+        # 定义科技风格主题样式
+        tech_theme = """
+        QWidget {
+            background-color: #000000;
+            color: #00ff00;
+        }
+        QTabWidget::pane {
+            border: 1px solid #00ff00;
+        }
+        QTabBar::tab {
+            background: #001100;
+            color: #00ff00;
+            padding: 8px 16px;
+        }
+        QTabBar::tab:selected {
+            background: #002200;
+        }
+        QLabel {
+            color: #00ff00;
+        }
+        """
+        
+        # 应用相应主题
+        if theme_name == "浅色主题":
+            self.setStyleSheet(light_theme)
+        elif theme_name == "深色主题":
+            self.setStyleSheet(dark_theme)
+        elif theme_name == "浅粉色少女心主题":
+            self.setStyleSheet(pink_theme)
+        elif theme_name == "科技风格主题":
+            self.setStyleSheet(tech_theme)
+        
+        # 通知聊天组件更新主题
+        self.rag_tab.update_theme(theme_name)
 
 
 if __name__ == "__main__":

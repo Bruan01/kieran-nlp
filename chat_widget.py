@@ -59,6 +59,30 @@ class ChatWidget(QWidget):
 
         self.rag_button.clicked.connect(self.run_rag)
         self.setLayout(main_layout)
+        
+        # 初始化主题
+        self.current_theme = "浅色主题"
+        
+        # 主题样式表
+        self.light_theme_styles = {
+            "user": "background: #10a37f; color: white; border-radius: 8px; padding: 8px 16px;",
+            "assistant": "background: #f1f1f1; color: #333; border-radius: 8px; padding: 8px 16px;"
+        }
+        
+        self.dark_theme_styles = {
+            "user": "background: #10a37f; color: white; border-radius: 8px; padding: 8px 16px;",
+            "assistant": "background: #555555; color: #ffffff; border-radius: 8px; padding: 8px 16px;"
+        }
+        
+        self.pink_theme_styles = {
+            "user": "background: #ff69b4; color: white; border-radius: 8px; padding: 8px 16px;",
+            "assistant": "background: #ffb6c1; color: #333; border-radius: 8px; padding: 8px 16px;"
+        }
+        
+        self.tech_theme_styles = {
+            "user": "background: #00ff00; color: black; border-radius: 8px; padding: 8px 16px;",
+            "assistant": "background: #001100; color: #00ff00; border-radius: 8px; padding: 8px 16px;"
+        }
 
     def add_message(self, text, is_user=True, question=None):
         msg_layout = QHBoxLayout()
@@ -72,14 +96,28 @@ class ChatWidget(QWidget):
         msg_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         if is_user:
             avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
-            msg_label.setStyleSheet("background: #10a37f; color: white; border-radius: 8px; padding: 8px 16px;")
+            # 根据主题动态设置样式
+            msg_label.setProperty("msgType", "user")
+            if self.current_theme == "浅色主题":
+                msg_label.setStyleSheet(self.light_theme_styles["user"])
+            elif self.current_theme == "深色主题":
+                msg_label.setStyleSheet(self.dark_theme_styles["user"])
+            elif self.current_theme == "浅粉色少女心主题":
+                msg_label.setStyleSheet(self.pink_theme_styles["user"])
+            elif self.current_theme == "科技风格主题":
+                msg_label.setStyleSheet(self.tech_theme_styles["user"])
             msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
             msg_layout.addStretch()
             msg_layout.addWidget(msg_label)
             msg_layout.addWidget(avatar)
         else:
             avatar.setPixmap(QPixmap("./asset/bot2.png").scaled(40, 40))
-            msg_label.setStyleSheet("background: #f1f1f1; color: #333; border-radius: 8px; padding: 8px 16px;")
+            # 根据主题动态设置样式
+            msg_label.setProperty("msgType", "assistant")
+            if self.current_theme == "浅色主题":
+                msg_label.setStyleSheet(self.light_theme_styles["assistant"])
+            else:  # 深色主题
+                msg_label.setStyleSheet(self.dark_theme_styles["assistant"])
             msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
             # 按钮区
             btn_layout = QHBoxLayout()
@@ -146,7 +184,16 @@ class ChatWidget(QWidget):
         msg_label.setTextFormat(Qt.RichText)
         msg_label.setWordWrap(True)  # 启用自动换行
         msg_label.setMaximumWidth(500)  # 设置最大宽度，超出自动换行
-        msg_label.setStyleSheet("background: #f1f1f1; color: #333; border-radius: 8px; padding: 8px 16px;")
+        # 根据主题动态设置样式
+        msg_label.setProperty("msgType", "assistant")
+        if self.current_theme == "浅色主题":
+            msg_label.setStyleSheet(self.light_theme_styles["assistant"])
+        elif self.current_theme == "深色主题":
+            msg_label.setStyleSheet(self.dark_theme_styles["assistant"])
+        elif self.current_theme == "浅粉色少女心主题":
+            msg_label.setStyleSheet(self.pink_theme_styles["assistant"])
+        elif self.current_theme == "科技风格主题":
+            msg_label.setStyleSheet(self.tech_theme_styles["assistant"])
         msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         copy_btn = QPushButton("复制")
         copy_btn.setFixedSize(50, 28)
@@ -155,6 +202,47 @@ class ChatWidget(QWidget):
         msg_layout.addWidget(avatar)
         msg_layout.addWidget(msg_label)
         msg_layout.addWidget(copy_btn)
-        msg_layout.addWidget(regen_btn)
         msg_layout.addStretch()
 
+    def update_theme(self, theme_name):
+        """更新聊天界面主题"""
+        self.current_theme = theme_name
+        # 更新已有消息的样式
+        self._update_existing_messages()
+    
+    def _update_existing_messages(self):
+        """更新已有消息的样式"""
+        for i in range(self.chat_layout.count()):
+            layout_item = self.chat_layout.itemAt(i)
+            if layout_item and layout_item.layout():
+                self._update_layout_widgets(layout_item.layout())
+    
+    def _update_layout_widgets(self, layout):
+        """递归更新布局中的控件样式"""
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item.widget():
+                self._update_widget_style(item.widget())
+            elif item.layout():
+                self._update_layout_widgets(item.layout())
+    
+    def _update_widget_style(self, widget):
+        """更新单个控件的样式"""
+        if hasattr(widget, 'property') and widget.property("msgType") == "user":
+            if self.current_theme == "浅色主题":
+                widget.setStyleSheet(self.light_theme_styles["user"])
+            elif self.current_theme == "深色主题":
+                widget.setStyleSheet(self.dark_theme_styles["user"])
+            elif self.current_theme == "浅粉色少女心主题":
+                widget.setStyleSheet(self.pink_theme_styles["user"])
+            elif self.current_theme == "科技风格主题":
+                widget.setStyleSheet(self.tech_theme_styles["user"])
+        elif hasattr(widget, 'property') and widget.property("msgType") == "assistant":
+            if self.current_theme == "浅色主题":
+                widget.setStyleSheet(self.light_theme_styles["assistant"])
+            elif self.current_theme == "深色主题":
+                widget.setStyleSheet(self.dark_theme_styles["assistant"])
+            elif self.current_theme == "浅粉色少女心主题":
+                widget.setStyleSheet(self.pink_theme_styles["assistant"])
+            elif self.current_theme == "科技风格主题":
+                widget.setStyleSheet(self.tech_theme_styles["assistant"])
