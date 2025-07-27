@@ -47,9 +47,34 @@ class ChatWidget(QWidget):
         input_layout = QHBoxLayout()
         self.rag_input = QTextEdit()
         self.rag_input.setFixedHeight(50)
-        self.rag_input.setStyleSheet("font-size: 16px; border-radius: 8px;")
+        # 设置输入框样式
+        self.rag_input.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #ccc;
+                border-radius: 12px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: rgba(255, 255, 255, 0.8);
+            }
+        """)
         self.rag_button = QPushButton("发送")
-        self.rag_button.setStyleSheet("font-size: 16px; padding: 10px 24px; background: #10a37f; color: white; border-radius: 8px;")
+        # 设置发送按钮样式
+        self.rag_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 12px;
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
         input_layout.addWidget(self.rag_input)
         input_layout.addWidget(self.rag_button)
 
@@ -65,23 +90,26 @@ class ChatWidget(QWidget):
         
         # 主题样式表
         self.light_theme_styles = {
-            "user": "background: #10a37f; color: white; border-radius: 8px; padding: 8px 16px;",
-            "assistant": "background: #f1f1f1; color: #333; border-radius: 8px; padding: 8px 16px;"
+            "user": "background-color: #dcf8c6; border-radius: 15px; padding: 12px; margin: 5px;",
+            "assistant": "background-color: #ffffff; border-radius: 15px; padding: 12px; margin: 5px;",
         }
-        
+
+        # 深色主题样式
         self.dark_theme_styles = {
-            "user": "background: #10a37f; color: white; border-radius: 8px; padding: 8px 16px;",
-            "assistant": "background: #555555; color: #ffffff; border-radius: 8px; padding: 8px 16px;"
+            "user": "background-color: #2a7a2a; border-radius: 15px; padding: 12px; margin: 5px;",
+            "assistant": "background-color: #2d2d2d; border-radius: 15px; padding: 12px; margin: 5px;",
         }
-        
+
+        # 浅粉色少女心主题样式
         self.pink_theme_styles = {
-            "user": "background: #ff69b4; color: white; border-radius: 8px; padding: 8px 16px;",
-            "assistant": "background: #ffb6c1; color: #333; border-radius: 8px; padding: 8px 16px;"
+            "user": "background-color: #ffc0cb; border-radius: 15px; padding: 12px; margin: 5px;",
+            "assistant": "background-color: #ffffff; border-radius: 15px; padding: 12px; margin: 5px;",
         }
-        
+
+        # 科技风格主题样式
         self.tech_theme_styles = {
-            "user": "background: #00ff00; color: black; border-radius: 8px; padding: 8px 16px;",
-            "assistant": "background: #001100; color: #00ff00; border-radius: 8px; padding: 8px 16px;"
+            "user": "background-color: #001100; border-radius: 15px; padding: 12px; margin: 5px;",
+            "assistant": "background-color: #000000; border-radius: 15px; padding: 12px; margin: 5px;",
         }
 
     def add_message(self, text, is_user=True, question=None):

@@ -14,7 +14,7 @@ load_dotenv()
 class NLPDesktopApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("NLP 工作台")
+        self.setWindowTitle("Kieran-NLP")
         self.resize(1100, 700)
 
         # 左侧侧边栏
@@ -110,13 +110,24 @@ class NLPDesktopApp(QMainWindow):
         }
         QTabWidget::pane {
             border: 1px solid #ccc;
+            border-radius: 10px;
         }
         QTabBar::tab {
             background: #e0e0e0;
             padding: 8px 16px;
+            border-radius: 8px;
         }
         QTabBar::tab:selected {
             background: #ffffff;
+        }
+        QComboBox {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        QListWidget {
+            border: 1px solid #ccc;
+            border-radius: 8px;
         }
         """
         
@@ -128,17 +139,30 @@ class NLPDesktopApp(QMainWindow):
         }
         QTabWidget::pane {
             border: 1px solid #555;
+            border-radius: 10px;
         }
         QTabBar::tab {
             background: #3d3d3d;
             color: #ffffff;
             padding: 8px 16px;
+            border-radius: 8px;
         }
         QTabBar::tab:selected {
             background: #4d4d4d;
         }
         QLabel {
             color: #ffffff;
+        }
+        QComboBox {
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 4px;
+            background: #3d3d3d;
+            color: #ffffff;
+        }
+        QListWidget {
+            border: 1px solid #555;
+            border-radius: 8px;
         }
         """
         
@@ -150,14 +174,25 @@ class NLPDesktopApp(QMainWindow):
         }
         QTabWidget::pane {
             border: 1px solid #ffc0cb;
+            border-radius: 10px;
         }
         QTabBar::tab {
             background: #ffc0cb;
             color: #333;
             padding: 8px 16px;
+            border-radius: 8px;
         }
         QTabBar::tab:selected {
             background: #ffffff;
+        }
+        QComboBox {
+            border: 1px solid #ffc0cb;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        QListWidget {
+            border: 1px solid #ffc0cb;
+            border-radius: 8px;
         }
         """
         
@@ -169,17 +204,30 @@ class NLPDesktopApp(QMainWindow):
         }
         QTabWidget::pane {
             border: 1px solid #00ff00;
+            border-radius: 10px;
         }
         QTabBar::tab {
             background: #001100;
             color: #00ff00;
             padding: 8px 16px;
+            border-radius: 8px;
         }
         QTabBar::tab:selected {
             background: #002200;
         }
         QLabel {
             color: #00ff00;
+        }
+        QComboBox {
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            padding: 4px;
+            background: #001100;
+            color: #00ff00;
+        }
+        QListWidget {
+            border: 1px solid #00ff00;
+            border-radius: 8px;
         }
         """
         
