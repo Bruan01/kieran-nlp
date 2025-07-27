@@ -112,7 +112,7 @@ class ChatWidget(QWidget):
             "assistant": "background-color: #000000; border-radius: 15px; padding: 12px; margin: 5px;",
         }
 
-    def add_message(self, text, is_user=True, question=None):
+    def add_message(self, text, is_user=True, question=None,show_copy=False):
         msg_layout = QHBoxLayout()
         avatar = QLabel()
         avatar.setFixedSize(40, 40)
@@ -149,16 +149,17 @@ class ChatWidget(QWidget):
             msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
             # 按钮区
             btn_layout = QHBoxLayout()
-            copy_btn = QPushButton("复制")
-            copy_btn.setFixedSize(50, 28)
-            copy_btn.setStyleSheet("background: #10a37f; color: white; border-radius: 6px;")
-            def copy_and_notify():
-                QApplication.clipboard().setText(text)
-                QToolTip.showText(copy_btn.mapToGlobal(copy_btn.rect().bottomRight()), "复制成功！", copy_btn)
-                QTimer.singleShot(1200, QToolTip.hideText)  # 1.2秒后自动消失
-            copy_btn.clicked.connect(copy_and_notify)
-
-            btn_layout.addWidget(copy_btn)
+            # 是否显示复制按钮与逻辑
+            if show_copy:
+                copy_btn = QPushButton("复制")
+                copy_btn.setFixedSize(50, 28)
+                copy_btn.setStyleSheet("background: #10a37f; color: white; border-radius: 6px;")
+                def copy_and_notify():
+                    QApplication.clipboard().setText(text)
+                    QToolTip.showText(copy_btn.mapToGlobal(copy_btn.rect().bottomRight()), "复制成功！", copy_btn)
+                    QTimer.singleShot(1200, QToolTip.hideText)  # 1.2秒后自动消失
+                copy_btn.clicked.connect(copy_and_notify)
+                btn_layout.addWidget(copy_btn)
    
             btn_layout.addStretch()
             # 垂直布局：气泡在上，按钮在下
@@ -174,63 +175,52 @@ class ChatWidget(QWidget):
     def run_rag(self):
         question = self.rag_input.toPlainText().strip()
         if question:
-            self.add_message(question, is_user=True)
+            self.add_message(question, is_user=True,show_copy=True)
             self.rag_input.clear()
             # 显示加载提示
             model = self.get_model_func()  # 动态获取
-            self.add_message("嗯🤔,让我想想哈～", is_user=False)
+            self.add_message("嗯🤔,让我想想哈～", is_user=False,show_copy=False)
             # 启动异步线程
             self.worker = ChatWorker(self.chat_core, question,model_name = model)
             self.worker.finished.connect(lambda answer: self.on_answer(answer, question))
             self.worker.start()
 
     def on_answer(self, answer, question):
-        # 移除“正在生成...”提示
+        # 移除“嗯🤔 让我想想哈～”提示
         last_layout = self.chat_layout.takeAt(self.chat_layout.count()-1)
         if last_layout:
+            # 遍历布局中的所有项目并删除它们
             while last_layout.count():
                 item = last_layout.takeAt(0)
-                widget = item.widget()
-                if widget:
-                    widget.deleteLater()
+                if item.widget():
+                    item.widget().deleteLater()
+                elif item.layout():
+                    # 如果项目是布局，则递归删除其内容
+                    sub_layout = item.layout()
+                    while sub_layout.count():
+                        sub_item = sub_layout.takeAt(0)
+                        if sub_item.widget():
+                            sub_item.widget().deleteLater()
+                        elif sub_item.layout():
+                            # 进一步递归处理嵌套布局
+                            self._clear_layout(sub_item.layout())
+                    # 删除空的布局
+                    sub_layout.deleteLater()
         # 添加真正的回复，并带问题用于重新生成
-        self.add_message(answer, is_user=False, question=question)
+        self.add_message(answer, is_user=False, question=question,show_copy=True)
+
+    def _clear_layout(self, layout):
+        """递归清除布局中的所有控件和子布局"""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self._clear_layout(item.layout())
+        layout.deleteLater()
 
 
-    def replace_answer(self, msg_layout, answer, question):
-        # 清空旧内容
-        for i in reversed(range(msg_layout.count())):
-            widget = msg_layout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
-        # 重新添加助手回复、复制和重新生成按钮
-        avatar = QLabel()
-        avatar.setPixmap(QPixmap("./asset/bot2.png").scaled(40, 40))
-        avatar.setFixedSize(40, 40)
-        text_html = markdown.markdown(text=answer)
-        msg_label = QLabel(text_html)
-        msg_label.setTextFormat(Qt.RichText)
-        msg_label.setWordWrap(True)  # 启用自动换行
-        msg_label.setMaximumWidth(500)  # 设置最大宽度，超出自动换行
-        # 根据主题动态设置样式
-        msg_label.setProperty("msgType", "assistant")
-        if self.current_theme == "浅色主题":
-            msg_label.setStyleSheet(self.light_theme_styles["assistant"])
-        elif self.current_theme == "深色主题":
-            msg_label.setStyleSheet(self.dark_theme_styles["assistant"])
-        elif self.current_theme == "浅粉色少女心主题":
-            msg_label.setStyleSheet(self.pink_theme_styles["assistant"])
-        elif self.current_theme == "科技风格主题":
-            msg_label.setStyleSheet(self.tech_theme_styles["assistant"])
-        msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        copy_btn = QPushButton("复制")
-        copy_btn.setFixedSize(50, 28)
-        copy_btn.setStyleSheet("background: #10a37f; color: white; border-radius: 6px;")
-        copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(answer))
-        msg_layout.addWidget(avatar)
-        msg_layout.addWidget(msg_label)
-        msg_layout.addWidget(copy_btn)
-        msg_layout.addStretch()
+    
 
     def update_theme(self, theme_name):
         """更新聊天界面主题"""

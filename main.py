@@ -15,7 +15,7 @@ class NLPDesktopApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Kieran-NLP")
-        self.resize(1100, 700)
+        self.resize(1280, 720)
 
         # 左侧侧边栏
         sidebar = QWidget()
@@ -97,8 +97,10 @@ class NLPDesktopApp(QMainWindow):
         self.on_theme_changed(self.theme_combo.currentText())
 
     def on_model_changed(self, model_name):
-        """当模型切换时更新提示信息"""
+        """当模型切换时更新提示信息和ChatCore配置"""
         self.model_tip_label.setText(f"当前模型: {model_name}")
+        # 更新ChatCore中的模型配置
+        self.rag_tab.chat_core.update_model(model_name)
         
     def on_theme_changed(self, theme_name):
         """当主题切换时更新界面样式"""
