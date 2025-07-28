@@ -81,8 +81,9 @@ class NLPDesktopApp(QMainWindow):
         self.rag_tab = QWidget()
         self.api_tab = QWidget()
         self.tabs.addTab(self.model_tab, "模型推理")
-        self.tabs.addTab(self.rag_tab, "RAG 问答")
-        self.tabs.addTab(self.api_tab, "API 控制台")
+        self.tabs.addTab(self.rag_tab, "RAG")
+        self.tabs.addTab(self.api_tab, "MCP")
+        self.tabs.setMinimumWidth(10)
 
         # 主布局
         main_widget = QWidget()
@@ -122,144 +123,20 @@ class NLPDesktopApp(QMainWindow):
         
     def on_theme_changed(self, theme_name):
         """当主题切换时更新界面样式"""
-        # 定义浅色主题样式
-        light_theme = """
-        QWidget {
-            background-color: #f0f0f0;
-            color: #333;
-        }
-        QTabWidget::pane {
-            border: 1px solid #ccc;
-            border-radius: 10px;
-        }
-        QTabBar::tab {
-            background: #e0e0e0;
-            padding: 8px 16px;
-            border-radius: 8px;
-        }
-        QTabBar::tab:selected {
-            background: #ffffff;
-        }
-        QComboBox {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 4px;
-        }
-        QListWidget {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-        """
-        
-        # 定义深色主题样式
-        dark_theme = """
-        QWidget {
-            background-color: #2d2d2d;
-            color: #ffffff;
-        }
-        QTabWidget::pane {
-            border: 1px solid #555;
-            border-radius: 10px;
-        }
-        QTabBar::tab {
-            background: #3d3d3d;
-            color: #ffffff;
-            padding: 8px 16px;
-            border-radius: 8px;
-        }
-        QTabBar::tab:selected {
-            background: #4d4d4d;
-        }
-        QLabel {
-            color: #ffffff;
-        }
-        QComboBox {
-            border: 1px solid #555;
-            border-radius: 8px;
-            padding: 4px;
-            background: #3d3d3d;
-            color: #ffffff;
-        }
-        QListWidget {
-            border: 1px solid #555;
-            border-radius: 8px;
-        }
-        """
-        
-        # 定义浅粉色少女心主题样式
-        pink_theme = """
-        QWidget {
-            background-color: #fff0f5;
-            color: #333;
-        }
-        QTabWidget::pane {
-            border: 1px solid #ffc0cb;
-            border-radius: 10px;
-        }
-        QTabBar::tab {
-            background: #ffc0cb;
-            color: #333;
-            padding: 8px 16px;
-            border-radius: 8px;
-        }
-        QTabBar::tab:selected {
-            background: #ffffff;
-        }
-        QComboBox {
-            border: 1px solid #ffc0cb;
-            border-radius: 8px;
-            padding: 4px;
-        }
-        QListWidget {
-            border: 1px solid #ffc0cb;
-            border-radius: 8px;
-        }
-        """
-        
-        # 定义科技风格主题样式
-        tech_theme = """
-        QWidget {
-            background-color: #000000;
-            color: #00ff00;
-        }
-        QTabWidget::pane {
-            border: 1px solid #00ff00;
-            border-radius: 10px;
-        }
-        QTabBar::tab {
-            background: #001100;
-            color: #00ff00;
-            padding: 8px 16px;
-            border-radius: 8px;
-        }
-        QTabBar::tab:selected {
-            background: #002200;
-        }
-        QLabel {
-            color: #00ff00;
-        }
-        QComboBox {
-            border: 1px solid #00ff00;
-            border-radius: 8px;
-            padding: 4px;
-            background: #001100;
-            color: #00ff00;
-        }
-        QListWidget {
-            border: 1px solid #00ff00;
-            border-radius: 8px;
-        }
-        """
-        
-        # 应用相应主题
-        if theme_name == "浅色主题":
-            self.setStyleSheet(light_theme)
-        elif theme_name == "深色主题":
-            self.setStyleSheet(dark_theme)
-        elif theme_name == "浅粉色少女心主题":
-            self.setStyleSheet(pink_theme)
-        elif theme_name == "科技风格主题":
-            self.setStyleSheet(tech_theme)
+        # 根据主题名称加载对应的QSS样式表
+        theme_name2qss_dir = { 
+            "浅色主题":"./style/iphone_style.qss", 
+            "深色主题":"./style/dark_style.qss", 
+            "浅粉色少女心主题":"./style/pink_style.qss", 
+            "科技风格主题":"./style/technology_style.qss" 
+         }
+        qss_file = theme_name2qss_dir.get(theme_name, 'iphone_style.qss')  # 默认使用iPhone风格
+        try:
+            with open(qss_file, 'r', encoding='utf-8') as f:
+                style_sheet = f.read()
+                self.setStyleSheet(style_sheet)
+        except FileNotFoundError:
+            print(f"警告：未找到{qss_file}文件，使用默认样式。")
         
         # 通知聊天组件更新主题
         self.model_tab.update_theme(theme_name)

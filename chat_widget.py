@@ -29,52 +29,33 @@ class ChatWidget(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(40, 40, 40, 40)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
 
+        # Create title with property for styling
         title = QLabel("OpenAI 风格问答")
+        title.setProperty("title", True)  # For QSS styling
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 28px; font-weight: bold; margin-bottom: 20px;")
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.chat_widget = QWidget()
         self.chat_layout = QVBoxLayout()
         self.chat_layout.setAlignment(Qt.AlignTop)
+        self.chat_layout.setSpacing(10)  # Reduce spacing between messages
         self.chat_widget.setLayout(self.chat_layout)
         self.scroll_area.setWidget(self.chat_widget)
 
         input_layout = QHBoxLayout()
+        input_layout.setSpacing(10)
+        
         self.model_base_input = QTextEdit()
-        self.model_base_input.setFixedHeight(50)
-        # 设置输入框样式
-        self.model_base_input.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #ccc;
-                border-radius: 12px;
-                padding: 10px;
-                font-size: 14px;
-                background-color: rgba(255, 255, 255, 0.8);
-            }
-        """)
+        self.model_base_input.setFixedHeight(60)
+        self.model_base_input.setPlaceholderText("输入消息...")
+        
         self.model_base_button = QPushButton("发送")
-        # 设置发送按钮样式
-        self.model_base_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 12px;
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #3d8b40;
-            }
-        """)
+        self.model_base_button.setFixedHeight(40)
+        
         input_layout.addWidget(self.model_base_input)
         input_layout.addWidget(self.model_base_button)
 
@@ -90,29 +71,25 @@ class ChatWidget(QWidget):
         # 初始化主题
         self.current_theme = "浅色主题"
         
-        # 主题样式表
-        self.light_theme_styles = {
-            "user": "background-color: #dcf8c6; border-radius: 15px; padding: 12px; margin: 5px;",
-            "assistant": "background-color: #ffffff; border-radius: 15px; padding: 12px; margin: 5px;",
-        }
-
-        # 深色主题样式
-        self.dark_theme_styles = {
-            "user": "background-color: #2a7a2a; border-radius: 15px; padding: 12px; margin: 5px;",
-            "assistant": "background-color: #2d2d2d; border-radius: 15px; padding: 12px; margin: 5px;",
-        }
-
-        # 浅粉色少女心主题样式
-        self.pink_theme_styles = {
-            "user": "background-color: #ffc0cb; border-radius: 15px; padding: 12px; margin: 5px;",
-            "assistant": "background-color: #ffffff; border-radius: 15px; padding: 12px; margin: 5px;",
-        }
-
-        # 科技风格主题样式
-        self.tech_theme_styles = {
-            "user": "background-color: #001100; border-radius: 15px; padding: 12px; margin: 5px;",
-            "assistant": "background-color: #000000; border-radius: 15px; padding: 12px; margin: 5px;",
-        }
+    def apply_qss_style(self):
+        """应用QSS样式"""
+        try:
+            with open('iphone_style.qss', 'r', encoding='utf-8') as f:
+                style_sheet = f.read()
+                # 避免递归调用
+                if self.styleSheet() != style_sheet:
+                    self.setStyleSheet(style_sheet)
+        except FileNotFoundError:
+            print("警告：未找到iphone_style.qss文件，使用默认样式。")
+        
+        # Initialize theme styles (now handled by QSS)
+        self.light_theme_styles = {}
+        self.dark_theme_styles = {}
+        self.pink_theme_styles = {}
+        self.tech_theme_styles = {}
+        
+        # 应用初始QSS样式
+        self.apply_qss_style()
     
     def display_history_messages(self, history):
         """显示从数据库加载的历史消息"""
@@ -133,36 +110,24 @@ class ChatWidget(QWidget):
         msg_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         if is_user:
             avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
-            # 根据主题动态设置样式
+            # Set message type property for QSS styling
             msg_label.setProperty("msgType", "user")
-            if self.current_theme == "浅色主题":
-                msg_label.setStyleSheet(self.light_theme_styles["user"])
-            elif self.current_theme == "深色主题":
-                msg_label.setStyleSheet(self.dark_theme_styles["user"])
-            elif self.current_theme == "浅粉色少女心主题":
-                msg_label.setStyleSheet(self.pink_theme_styles["user"])
-            elif self.current_theme == "科技风格主题":
-                msg_label.setStyleSheet(self.tech_theme_styles["user"])
             msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
             msg_layout.addStretch()
             msg_layout.addWidget(msg_label)
             msg_layout.addWidget(avatar)
         else:
             avatar.setPixmap(QPixmap("./asset/bot2.png").scaled(40, 40))
-            # 根据主题动态设置样式
+            # Set message type property for QSS styling
             msg_label.setProperty("msgType", "assistant")
-            if self.current_theme == "浅色主题":
-                msg_label.setStyleSheet(self.light_theme_styles["assistant"])
-            else:  # 深色主题
-                msg_label.setStyleSheet(self.dark_theme_styles["assistant"])
             msg_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
             # 按钮区
             btn_layout = QHBoxLayout()
             # 是否显示复制按钮与逻辑
             if show_copy:
                 copy_btn = QPushButton("复制")
+                copy_btn.setProperty("copyButton", True)  # For QSS styling
                 copy_btn.setFixedSize(50, 28)
-                copy_btn.setStyleSheet("background: #10a37f; color: white; border-radius: 6px;")
                 def copy_and_notify():
                     QApplication.clipboard().setText(text)
                     QToolTip.showText(copy_btn.mapToGlobal(copy_btn.rect().bottomRight()), "复制成功！", copy_btn)
@@ -253,6 +218,8 @@ class ChatWidget(QWidget):
         self.current_theme = theme_name
         # 更新已有消息的样式
         self._update_existing_messages()
+        # 重新应用QSS样式 (避免递归调用)
+        # self.apply_qss_style()
     
     def _update_existing_messages(self):
         """更新已有消息的样式"""
@@ -272,24 +239,8 @@ class ChatWidget(QWidget):
     
     def _update_widget_style(self, widget):
         """更新单个控件的样式"""
-        if hasattr(widget, 'property') and widget.property("msgType") == "user":
-            if self.current_theme == "浅色主题":
-                widget.setStyleSheet(self.light_theme_styles["user"])
-            elif self.current_theme == "深色主题":
-                widget.setStyleSheet(self.dark_theme_styles["user"])
-            elif self.current_theme == "浅粉色少女心主题":
-                widget.setStyleSheet(self.pink_theme_styles["user"])
-            elif self.current_theme == "科技风格主题":
-                widget.setStyleSheet(self.tech_theme_styles["user"])
-        elif hasattr(widget, 'property') and widget.property("msgType") == "assistant":
-            if self.current_theme == "浅色主题":
-                widget.setStyleSheet(self.light_theme_styles["assistant"])
-            elif self.current_theme == "深色主题":
-                widget.setStyleSheet(self.dark_theme_styles["assistant"])
-            elif self.current_theme == "浅粉色少女心主题":
-                widget.setStyleSheet(self.pink_theme_styles["assistant"])
-            elif self.current_theme == "科技风格主题":
-                widget.setStyleSheet(self.tech_theme_styles["assistant"])
+        # 现在样式由QSS文件统一管理，无需在这里单独设置
+        pass
     
     def clear_chat(self):
          """清空聊天界面"""

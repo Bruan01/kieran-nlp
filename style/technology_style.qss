@@ -1,0 +1,177 @@
+/* Technology iPhone-like styling for the NLP Desktop App */
+
+/* Main window styling */
+QWidget {
+    background-color: #0d1b2a; /* Dark blue background */
+    color: #ffffff;
+    font-family: "-apple-system", "Helvetica Neue", sans-serif;
+}
+
+/* Title styling */
+QLabel[title="true"] {
+    font-size: 24px;
+    font-weight: 600;
+    color: #4cc9f0; /* Cyan color */
+    qproperty-alignment: AlignCenter;
+    margin: 10px;
+}
+
+/* Tab widget styling */
+QTabWidget::pane {
+    border: none;
+    border-radius: 10px;
+    background-color: #1b263b; /* Darker blue background */
+}
+
+QTabBar::tab {
+    background: transparent;
+    padding: 12px 20px;
+    margin: 4px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4cc9f0; /* Cyan color */
+}
+
+QTabBar::tab:selected {
+    background: #1b263b; /* Darker blue */
+    color: #4361ee; /* Blue color */
+    font-weight: 600;
+}
+
+QTabBar::tab:!selected {
+    background: #0d1b2a; /* Dark blue */
+}
+
+/* Combo box styling */
+QComboBox {
+    border: 1px solid #4cc9f0; /* Cyan border */
+    border-radius: 8px;
+    padding: 8px 12px;
+    background-color: #1b263b; /* Darker blue background */
+    font-size: 14px;
+    min-height: 20px;
+}
+
+QComboBox:hover {
+    border-color: #4361ee; /* Blue on hover */
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    image: url(asset/arrow_down.png); /* You'll need to add this asset */
+    width: 12px;
+    height: 12px;
+}
+
+/* List widget styling */
+QListWidget {
+    border: none;
+    background-color: #1b263b; /* Darker blue background */
+    border-radius: 10px;
+    padding: 5px;
+}
+
+QListWidget::item {
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+}
+
+QListWidget::item:selected {
+    background-color: #4361ee; /* Blue selection */
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #4361ee; /* Blue color */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: 500;
+    min-height: 20px;
+}
+
+QPushButton:hover {
+    background-color: #3a56d4; /* Darker blue on hover */
+}
+
+QPushButton:pressed {
+    background-color: #324bb8; /* Even darker blue when pressed */
+}
+
+QPushButton[secondary="true"] {
+    background-color: #0d1b2a; /* Dark blue for secondary buttons */
+    color: #4cc9f0; /* Cyan text */
+}
+
+/* Text edit styling */
+QTextEdit {
+    border: 1px solid #4cc9f0; /* Cyan border */
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 15px;
+    background-color: #1b263b; /* Darker blue background */
+}
+
+QTextEdit:focus {
+    border-color: #4361ee; /* Blue border when focused */
+}
+
+/* Scroll area styling */
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+/* Chat message styling */
+QLabel[msgType="user"] {
+    background-color: #4361ee; /* Blue for user messages */
+    color: white;
+    border-radius: 18px;
+    padding: 12px 16px;
+    margin: 5px;
+}
+
+QLabel[msgType="assistant"] {
+    background-color: #1b263b; /* Darker blue for assistant messages */
+    color: #ffffff;
+    border-radius: 18px;
+    padding: 12px 16px;
+    margin: 5px;
+}
+
+/* Copy button styling */
+QPushButton[copyButton="true"] {
+    background-color: #4cc9f0; /* Cyan color */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    min-height: 16px;
+}
+
+/* Status labels */
+QLabel[modelTip="true"] {
+    color: #4cc9f0; /* Cyan color */
+    font-weight: 500;
+    font-size: 13px;
+    qproperty-alignment: AlignCenter;
+    margin: 5px;
+}
+
+/* User label */
+QLabel[userLabel="true"] {
+    color: #4cc9f0; /* Cyan color */
+    font-size: 13px;
+    qproperty-alignment: AlignCenter;
+    margin: 10px;
+}
