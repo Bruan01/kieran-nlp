@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter, QMenu, QAction, QInputDialog
+    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter, QMenu, QAction, QInputDialog, QDialog
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
@@ -11,6 +11,75 @@ import sys
 
 # 加载.env
 load_dotenv()
+
+class SettingsDialog(QDialog):
+    """设置对话框，用于主题和语言设置"""
+    def __init__(self, parent=None, current_theme="深色主题", current_language="中文"):
+        super().__init__(parent)
+        self.setWindowTitle("设置")
+        self.setFixedSize(400, 300)
+        self.current_theme = current_theme
+        self.current_language = current_language
+        
+        # 应用当前主题样式
+        self.apply_theme()
+        
+        # 创建UI
+        self.init_ui()
+    
+    def apply_theme(self):
+        """应用当前主题样式"""
+        # 根据当前主题加载对应的QSS样式表
+        theme_name2qss_dir = { 
+            "浅色主题": "./style/iphone_style.qss", 
+            "深色主题": "./style/dark_style.qss", 
+            "浅粉色少女心主题": "./style/pink_style.qss", 
+            "科技风格主题": "./style/technology_style.qss" 
+        }
+        qss_file = theme_name2qss_dir.get(self.current_theme, './style/dark_style.qss')
+        try:
+            with open(qss_file, 'r', encoding='utf-8') as f:
+                style_sheet = f.read()
+                self.setStyleSheet(style_sheet)
+        except FileNotFoundError:
+            print(f"警告：未找到{qss_file}文件，使用默认样式。")
+    
+    def init_ui(self):
+        """初始化UI"""
+        layout = QVBoxLayout()
+        
+        # 主题设置
+        theme_label = QLabel("外观主题")
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
+        self.theme_combo.setCurrentText(self.current_theme)
+        
+        layout.addWidget(theme_label)
+        layout.addWidget(self.theme_combo)
+        
+        # 语言设置
+        language_label = QLabel("语言设置")
+        self.language_combo = QComboBox()
+        self.language_combo.addItems(["中文", "English"])
+        self.language_combo.setCurrentText(self.current_language)
+        
+        layout.addWidget(language_label)
+        layout.addWidget(self.language_combo)
+        
+        # 确定和取消按钮
+        button_layout = QHBoxLayout()
+        self.ok_button = QPushButton("确定")
+        self.cancel_button = QPushButton("取消")
+        
+        self.ok_button.clicked.connect(self.accept)
+        self.cancel_button.clicked.connect(self.reject)
+        
+        button_layout.addWidget(self.ok_button)
+        button_layout.addWidget(self.cancel_button)
+        
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
 
 # ===============对话主窗口====================
 class NLPDesktopApp(QMainWindow):
@@ -44,11 +113,13 @@ class NLPDesktopApp(QMainWindow):
         # 连接信号槽，实现在切换模型时提醒用户
         self.api_combo.currentTextChanged.connect(self.on_model_changed)
 
-        # 主题切换
+        # 主题切换（已隐藏）
         theme_label = QLabel("主题切换")
+        theme_label.setVisible(False)  # 隐藏主题标签
         self.theme_combo = QComboBox()
         self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
+        self.theme_combo.setVisible(False)  # 隐藏主题选择框
 
         sidebar_layout.addWidget(theme_label)
         sidebar_layout.addWidget(self.theme_combo)
@@ -72,10 +143,11 @@ class NLPDesktopApp(QMainWindow):
         user_info_layout = QHBoxLayout()
         
         # 用户头像
-        user_avatar = QLabel()
-        user_avatar.setFixedSize(40, 40)
-        user_avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
-        user_info_layout.addWidget(user_avatar)
+        self.user_avatar = QLabel()
+        self.user_avatar.setFixedSize(40, 40)
+        self.user_avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
+        self.user_avatar.setCursor(Qt.PointingHandCursor)  # 设置鼠标手势
+        user_info_layout.addWidget(self.user_avatar)
         
         # 从文件获取当前授权码
         with open(AUTH_MARKER_FILE_PATH, 'r') as f:
@@ -89,6 +161,9 @@ class NLPDesktopApp(QMainWindow):
         # 将用户信息布局添加到侧边栏底部
         sidebar_layout.addStretch()  # 添加弹性空间
         sidebar_layout.addLayout(user_info_layout)
+        
+        # 连接用户头像点击事件
+        self.user_avatar.mousePressEvent = self.show_settings_dialog
 
         
 
@@ -341,6 +416,25 @@ class NLPDesktopApp(QMainWindow):
                 
                 # 重新加载对话列表
                 self.init_conversation_list()
+    
+    def show_settings_dialog(self, event):
+        """显示设置对话框"""
+        # 获取当前主题
+        current_theme = self.theme_combo.currentText()
+        
+        # 创建并显示设置对话框
+        settings_dialog = SettingsDialog(self, current_theme)
+        result = settings_dialog.exec_()
+        
+        # 如果用户点击了确定按钮
+        if result == QDialog.Accepted:
+            # 获取选择的主题
+            selected_theme = settings_dialog.theme_combo.currentText()
+            
+            # 如果主题发生变化，更新主题
+            if selected_theme != current_theme:
+                self.theme_combo.setCurrentText(selected_theme)
+                self.on_theme_changed(selected_theme)
     
     def display_chat_history(self):
         """显示聊天历史记录"""

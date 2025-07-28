@@ -55,8 +55,15 @@ Kieran NLP 是一个基于 PyQt5 的桌面 GUI 对话系统，专为 AI 大模�
 ![增加流式输出，修复若干ui问题，重构渲染逻辑，增加对话列表](./mdfile/image7.png)
 ![增加流式输出，修复若干ui问题，重构渲染逻辑，增加对话列表](./mdfile/image6.png)
 
-### Markdown 渲染效果
+### 用户界面
 ![私有化api等敏感信息到env文件,支持markdown输出](./mdfile/image3.png)
+![s s](./mdfile/image8.png)
+![ss](./mdfile/image9.png)
+
+
+
+
+
 
 ## 目录结构
 
