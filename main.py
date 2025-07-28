@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter, QMenu, QAction, QInputDialog
 )
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from chat_interface import ChatCore
 from chat_widget import ChatWidget
@@ -49,17 +50,9 @@ class NLPDesktopApp(QMainWindow):
         self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
 
-        # 从文件获取当前授权码
-        with open(AUTH_MARKER_FILE_PATH, 'r') as f:
-            content = f.read()
-            if "Authorized = 「" in content:
-                authorized_code = content.split("「")[1].split("」")[0]
-                # 用户状态
-                user_label = QLabel(f"用户：已登录 授权码: {authorized_code}")
-                sidebar_layout.addWidget(theme_label)
-                sidebar_layout.addWidget(self.theme_combo)
-                sidebar_layout.addWidget(user_label)
-
+        sidebar_layout.addWidget(theme_label)
+        sidebar_layout.addWidget(self.theme_combo)
+        
         # 对话列表
         dialog_label = QLabel("对话列表")
         self.dialog_list = QListWidget()
@@ -73,6 +66,31 @@ class NLPDesktopApp(QMainWindow):
         sidebar_layout.addWidget(self.dialog_list)
         sidebar_layout.addWidget(new_dialog_btn)
         sidebar_layout.addStretch()
+
+        # 添加用户头像和状态信息到最下方
+        # 创建一个水平布局来放置头像和状态信息
+        user_info_layout = QHBoxLayout()
+        
+        # 用户头像
+        user_avatar = QLabel()
+        user_avatar.setFixedSize(40, 40)
+        user_avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
+        user_info_layout.addWidget(user_avatar)
+        
+        # 从文件获取当前授权码
+        with open(AUTH_MARKER_FILE_PATH, 'r') as f:
+            content = f.read()
+            if "Authorized = 「" in content:
+                authorized_code = content.split("「")[1].split("」")[0]
+                # 用户状态
+                user_label = QLabel(f"用户：已登录 授权码: {authorized_code}")
+                user_info_layout.addWidget(user_label)
+        
+        # 将用户信息布局添加到侧边栏底部
+        sidebar_layout.addStretch()  # 添加弹性空间
+        sidebar_layout.addLayout(user_info_layout)
+
+        
 
         # 右侧主内容区
         self.tabs = QTabWidget()
