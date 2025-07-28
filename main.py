@@ -264,7 +264,7 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication, QInputDialog, QMessageBox
     
     # 定义授权标记文件路径
-    AUTH_MARKER_FILE = "kieran_nlp_authorized"
+    AUTH_MARKER_FILE = "./authorized/kieran_nlp_authorized"
     AUTH_CODE_LIST_FILE = './authorized/auth_code.txt'
     # 预设的授权码 从加密文件中获取
     with open(AUTH_CODE_LIST_FILE, 'r') as f:
@@ -272,7 +272,7 @@ if __name__ == "__main__":
 
 
     # 检查授权标记文件是否存在
-    AUTH_MARKER_FILE_PATH = os.path.join(os.getcwd(), 'authorized', '.kieran_nlp_authorized')
+    AUTH_MARKER_FILE_PATH = os.path.join(os.getcwd(), 'authorized', 'kieran_nlp_authorized')
     if not os.path.exists(AUTH_MARKER_FILE_PATH):
         # 授权标记文件不存在，需要进行授权验证
         # 弹出输入对话框获取授权码
@@ -280,7 +280,8 @@ if __name__ == "__main__":
 
         for PRESET_AUTH_CODE in PRESET_AUTH_CODE_list:
             if ok and auth_code == PRESET_AUTH_CODE:
-                # 授权码正确，创建授权标记文件
+                # 确保授权标记文件所在目录存在，不存在则创建
+                os.makedirs(os.path.dirname(AUTH_MARKER_FILE), exist_ok=True)
                 with open(AUTH_MARKER_FILE, 'w') as f:
                     f.write(f"Authorized = 「{auth_code}」")
                     # 并且设置为环境变量
