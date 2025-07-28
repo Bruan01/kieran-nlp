@@ -175,3 +175,19 @@ QLabel[userLabel="true"] {
     qproperty-alignment: AlignCenter;
     margin: 10px;
 }
+
+/* Group box styling */
+QGroupBox {
+    border: 1px solid #ffb6c1;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding: 20px 15px 15px 15px; /* 上 右 下 左 */
+    font-weight: bold;
+    color: #ff69b4;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0 5px;
+}

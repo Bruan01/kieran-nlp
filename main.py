@@ -1,13 +1,14 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter, QMenu, QAction, QInputDialog, QDialog
+    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter, QMenu, QAction, QInputDialog, QDialog, QGroupBox
 )
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from chat_interface import ChatCore
 from chat_widget import ChatWidget
 from dotenv import load_dotenv
 import os
 import sys
+import requests
 
 # 加载.env
 load_dotenv()
@@ -17,15 +18,35 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None, current_theme="深色主题", current_language="中文"):
         super().__init__(parent)
         self.setWindowTitle("设置")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(400, 500)  # 增加高度以容纳用户信息
         self.current_theme = current_theme
         self.current_language = current_language
+        
+        # 获取用户信息
+        self.user_info = self.get_user_info()
         
         # 应用当前主题样式
         self.apply_theme()
         
         # 创建UI
         self.init_ui()
+    
+    def get_user_info(self):
+        """获取用户基本信息"""
+        try:
+            api_key = os.getenv("API_KEY")
+            url = "https://api.siliconflow.cn/v1/user/info"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"获取用户信息失败: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"获取用户信息时出错: {e}")
+            return None
     
     def apply_theme(self):
         """应用当前主题样式"""
@@ -47,6 +68,70 @@ class SettingsDialog(QDialog):
     def init_ui(self):
         """初始化UI"""
         layout = QVBoxLayout()
+        
+        # 用户信息显示
+        user_info_group = QGroupBox("用户信息")
+        user_info_layout = QVBoxLayout()
+        
+        if self.user_info and 'data' in self.user_info:
+            data = self.user_info['data']
+            # 为每个QLabel设置最小高度以确保完全显示，并添加间距
+            user_id_label = QLabel(f"用户ID: {data.get('id', 'N/A')}")
+            user_id_label.setMinimumHeight(20)
+            user_id_label.setWordWrap(True)
+            user_id_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(user_id_label)
+        
+            
+            admin_label = QLabel(f"Admin: {data.get('isAdmin', 'N/A')}")
+            admin_label.setMinimumHeight(20)
+            admin_label.setWordWrap(True)
+            admin_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(admin_label)
+         
+            
+            balance_label = QLabel(f"API额度: {data.get('balance', 'N/A')}")
+            balance_label.setMinimumHeight(20)
+            balance_label.setWordWrap(True)
+            balance_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(balance_label)
+       
+            
+            total_balance_label = QLabel(f"API总额度: {data.get('totalBalance', 'N/A')}")
+            total_balance_label.setMinimumHeight(20)
+            total_balance_label.setWordWrap(True)
+            total_balance_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(total_balance_label)
+            
+            
+            user_type_label = QLabel(f"用户类型: {data.get('name', 'N/A')}")
+            user_type_label.setMinimumHeight(20)
+            user_type_label.setWordWrap(True)
+            user_type_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(user_type_label)
+          
+            
+            user_status_label = QLabel(f"用户状态: {data.get('status', 'N/A')}")
+            user_status_label.setMinimumHeight(20)
+            user_status_label.setWordWrap(True)
+            user_status_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(user_status_label)
+          
+            
+            # 添加底部间距
+            user_info_layout.addStretch()
+        else:
+            no_info_label = QLabel("无法获取用户信息")
+            no_info_label.setMinimumHeight(20)
+            no_info_label.setStyleSheet("font-size: 14px;color: #666666;")
+            user_info_layout.addWidget(no_info_label)
+            
+            # 添加底部间距
+            user_info_layout.addStretch()
+        
+        user_info_group.setLayout(user_info_layout)
+        
+        layout.addWidget(user_info_group)
         
         # 主题设置
         theme_label = QLabel("外观主题")
@@ -97,10 +182,21 @@ class NLPDesktopApp(QMainWindow):
         api_label = QLabel("API 切换")
         self.api_combo = QComboBox()
         self.api_combo.addItems(["deepseek-ai/DeepSeek-V3",
+        "deepseek-ai/DeepSeek-R1",
+        "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
+        "deepseek-ai/deepseek-vl2",
         "Qwen/QwQ-32B",
+        "Qwen/Qwen2.5-VL-32B-Instruct",
+        "Qwen/Qwen2.5-Coder-32B-Instruct",
         "Qwen/Qwen3-235B-A22B-Instruct-2507",
+        "Tongyi-Zhiwen/QwenLong-L1-32B",
         "tencent/Hunyuan-A13B-Instruct",
-        "Tongyi-Zhiwen/QwenLong-L1-32B"])
+        "Tongyi-Zhiwen/QwenLong-L1-32B",
+        "THUDM/glm-4-9b-chat",
+        "THUDM/GLM-4.1V-9B-Thinking",
+        "THUDM/GLM-Z1-32B-0414",
+        "baidu/ERNIE-4.5-300B-A47B",
+        ])
         
         # 添加模型切换提示标签
         self.model_tip_label = QLabel("")
@@ -172,6 +268,9 @@ class NLPDesktopApp(QMainWindow):
         api_key = os.getenv("API_KEY")
         api_url = os.getenv("API_URL")
         chat_core = ChatCore(api_key=api_key, api_url=api_url)
+        
+        # 不再需要手动加载对话历史，RunnableWithMessageHistory会自动处理
+
         get_model_func = lambda: self.api_combo.currentText()
         self.model_tab = ChatWidget(chat_core, get_model_func)
         self.rag_tab = QWidget()
@@ -279,6 +378,15 @@ class NLPDesktopApp(QMainWindow):
     
     def switch_conversation(self, item):
         """切换对话"""
+        # 检查是否有正在进行的对话生成
+        if self.model_tab.is_worker_running():
+            # 显示提示信息
+            QMessageBox.warning(self, "提示", "当前对话正在生成中，请等待生成结束后再切换对话。")
+            return
+        
+        # 停止当前可能正在运行的worker线程
+        self.model_tab.stop_worker()
+        
         # 获取授权码作为用户标识
         auth_code = os.environ.get('AUTH_CODE', 'default_user')
         # 获取选中的对话标题
@@ -301,6 +409,10 @@ class NLPDesktopApp(QMainWindow):
                 
                 # 显示对话历史
                 self.model_tab.display_history_messages(history)
+                
+                # 滚动到对话底部
+                QTimer.singleShot(0, lambda: self.model_tab.scroll_area.verticalScrollBar().setValue(
+                    self.model_tab.scroll_area.verticalScrollBar().maximum()))
                 break
     
     def show_conversation_context_menu(self, position):
@@ -497,6 +609,7 @@ if __name__ == "__main__":
     else:
         # 启动主窗口
         window = NLPDesktopApp()
-        # 不加载用户的对话历史，保持空白界面
+        # 加载用户的对话历史
+        window.init_conversation_list()
         window.show()
         sys.exit(app.exec_())

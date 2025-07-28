@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 class ChatDatabase:
-    def __init__(self, db_path="chat_history.db"):
+    def __init__(self, db_path="./chat_history.db"):
         """初始化数据库连接"""
         self.db_path = db_path
         self.init_db()

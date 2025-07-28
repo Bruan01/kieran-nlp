@@ -34,6 +34,7 @@ class ChatWidget(QWidget):
         self.chat_core = chat_core
         self.init_ui()
         self.get_model_func = get_model_func
+        self.worker = None  # 保存当前运行的worker线程
     
         
 
@@ -112,7 +113,7 @@ class ChatWidget(QWidget):
         msg_layout = QHBoxLayout()
         avatar = QLabel()
         avatar.setFixedSize(40, 40)
-        text_html = markdown.markdown(text=text)
+        text_html = markdown.markdown(text=text, extensions=['tables', 'fenced_code', 'codehilite'])
         msg_label = QLabel(text_html)
         msg_label.setTextFormat(Qt.RichText)
         # msg_label.setWordWrap(True)
@@ -202,6 +203,10 @@ class ChatWidget(QWidget):
 
     def on_stream_data(self, chunk):
         # 更新流式消息
+        # 检查scroll_area是否仍然存在
+        if not self.scroll_area:
+            return
+            
         if self.stream_message_label is None:
             # 移除加载提示
             if self.chat_layout.count() > 0:
@@ -226,11 +231,17 @@ class ChatWidget(QWidget):
             # 更新现有消息
             self.stream_message_text += chunk
             # 应用Markdown转换
-            formatted_text = markdown.markdown(self.stream_message_text, extensions=['fenced_code', 'codehilite'])
-            self.stream_message_label.setText(formatted_text)
+            formatted_text = markdown.markdown(self.stream_message_text, extensions=['tables', 'fenced_code', 'codehilite'])
+            # 检查标签是否仍然有效
+            if self.stream_message_label:
+                self.stream_message_label.setText(formatted_text)
     
     def on_answer(self, answer, question):
-        # 移除“嗯🤔 让我想想哈～”提示
+        # 检查scroll_area是否仍然存在
+        if not self.scroll_area:
+            return
+            
+        # 移除"嗯🤔 让我想想哈～"提示
         last_layout = self.chat_layout.takeAt(self.chat_layout.count()-1)
         if last_layout:
             # 遍历布局中的所有项目并删除它们
@@ -252,6 +263,9 @@ class ChatWidget(QWidget):
                     sub_layout.deleteLater()
         # 添加真正的回复，并带问题用于重新生成
         self.add_message(answer, is_user=False, question=question,show_copy=True)
+        
+        # 重置worker引用
+        self.worker = None
 
     def _clear_layout(self, layout):
         """递归清除布局中的所有控件和子布局"""
@@ -296,16 +310,30 @@ class ChatWidget(QWidget):
         pass
     
     def clear_chat(self):
-         """清空聊天界面"""
-         # 清空聊天记录显示区域
-         # 逐个删除布局中的所有项目
-         while self.chat_layout.count():
-             item = self.chat_layout.takeAt(0)
-             if item.widget():
-                 item.widget().deleteLater()
-             elif item.layout():
-                 # 递归删除布局中的所有控件
-                 self._clear_layout(item.layout())
-         
-         # 注意：我们不重新初始化整个UI，只需要清空聊天记录即可
-         # self.init_ui()
+        """清空聊天界面"""
+        # 停止正在进行的worker线程
+        self.stop_worker()
+        
+        # 清空聊天记录显示区域
+        # 逐个删除布局中的所有项目
+        while self.chat_layout.count():
+            item = self.chat_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                # 递归删除布局中的所有控件
+                self._clear_layout(item.layout())
+        
+        # 注意：我们不重新初始化整个UI，只需要清空聊天记录即可
+        # self.init_ui()
+    
+    def stop_worker(self):
+        """停止当前运行的worker线程"""
+        if self.worker and self.worker.isRunning():
+            self.worker.quit()
+            self.worker.wait()
+            self.worker = None
+    
+    def is_worker_running(self):
+        """检查是否有正在进行的worker线程"""
+        return self.worker is not None and self.worker.isRunning()
