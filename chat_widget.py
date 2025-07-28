@@ -6,17 +6,27 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal ,QTimer
 from PyQt5.QtGui import QPixmap
 import markdown
 
-class ChatWorker(QThread):
+class StreamChatWorker(QThread):
     finished = pyqtSignal(str)
-    def __init__(self, chat_core, question,model_name ):
+    stream_data = pyqtSignal(str)
+    
+    def __init__(self, chat_core, question, model_name):
         super().__init__()
         self.chat_core = chat_core
         self.question = question
         self.model_name = model_name
         
     def run(self):
-        answer = self.chat_core.chat(self.question, model=self.model_name)
-        self.finished.emit(answer)
+        # 使用流式方式获取回答
+        full_answer = ""
+        try:
+            # 使用流式聊天方法
+            for chunk in self.chat_core.stream_chat(self.question, model=self.model_name):
+                full_answer += chunk
+                self.stream_data.emit(chunk)
+            self.finished.emit(full_answer)
+        except Exception as e:
+            self.finished.emit(f"错误：{str(e)}")
 
 class ChatWidget(QWidget):
     def __init__(self, chat_core,get_model_func):
@@ -98,16 +108,22 @@ class ChatWidget(QWidget):
             message = entry['message']
             self.add_message(message, is_user=is_user, show_copy=not is_user)
 
-    def add_message(self, text, is_user=True, question=None,show_copy=False):
+    def add_message(self, text, is_user=True, question=None, show_copy=False, return_label=False):
         msg_layout = QHBoxLayout()
         avatar = QLabel()
         avatar.setFixedSize(40, 40)
         text_html = markdown.markdown(text=text)
         msg_label = QLabel(text_html)
         msg_label.setTextFormat(Qt.RichText)
+        # msg_label.setWordWrap(True)
+        # msg_label.setMaximumWidth(500)
+        # msg_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        # 将其修改为：
         msg_label.setWordWrap(True)
-        msg_label.setMaximumWidth(500)
+        msg_label.setMaximumWidth(600)  # 增加最大宽度
         msg_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        msg_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)  # 允许垂直方向扩展
+        msg_label.setMinimumHeight(40)  # 设置最小高度以确保气泡有足够的显示空间
         if is_user:
             avatar.setPixmap(QPixmap("./asset/user.png").scaled(40, 40))
             # Set message type property for QSS styling
@@ -146,19 +162,27 @@ class ChatWidget(QWidget):
         self.chat_layout.addLayout(msg_layout)
         # 确保发送新消息后滚动到对话列表的最底部
         QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum()))
+        
+        # 如果需要返回标签引用
+        if return_label:
+            return msg_label
 
     def run_model_base(self):
         question = self.model_base_input.toPlainText().strip()
         if question:
-            self.add_message(question, is_user=True,show_copy=True)
+            self.add_message(question, is_user=True, show_copy=True)
             self.model_base_input.clear()
             # 显示加载提示
             model = self.get_model_func()  # 动态获取
-            self.add_message("嗯🤔,让我想想哈～", is_user=False,show_copy=False)
-            # 启动异步线程
-            self.worker = ChatWorker(self.chat_core, question,model_name = model)
+            self.add_message("嗯🤔,让我想想哈～", is_user=False, show_copy=False)
+            # 启动流式异步线程
+            self.worker = StreamChatWorker(self.chat_core, question, model_name=model)
+            self.worker.stream_data.connect(self.on_stream_data)
             self.worker.finished.connect(lambda answer: self.on_answer(answer, question))
             self.worker.start()
+            # 保存流式消息的引用，以便更新
+            self.stream_message_label = None
+            self.stream_message_text = ""
     
     def eventFilter(self, source, event):
         # 添加使用 Enter 键发送消息的功能
@@ -176,6 +200,35 @@ class ChatWidget(QWidget):
                     return True
         return super().eventFilter(source, event)
 
+    def on_stream_data(self, chunk):
+        # 更新流式消息
+        if self.stream_message_label is None:
+            # 移除加载提示
+            if self.chat_layout.count() > 0:
+                loading_item = self.chat_layout.itemAt(self.chat_layout.count() - 1)
+                if loading_item and loading_item.widget():
+                    loading_widget = loading_item.widget()
+                    # 检查是否是加载提示消息
+                    # 遍历布局中的所有项目以找到消息标签
+                    loading_msg_label = None
+                    for i in range(loading_widget.layout().count()):
+                        item = loading_widget.layout().itemAt(i)
+                        if item.widget() and isinstance(item.widget(), QLabel):
+                            loading_msg_label = item.widget()
+                            break
+                    if loading_msg_label and "嗯🤔,让我想想哈～" in loading_msg_label.text():
+                        loading_widget.deleteLater()
+            
+            # 添加新的流式消息标签
+            self.stream_message_text = chunk
+            self.stream_message_label = self.add_message(self.stream_message_text, is_user=False, show_copy=False, return_label=True)
+        else:
+            # 更新现有消息
+            self.stream_message_text += chunk
+            # 应用Markdown转换
+            formatted_text = markdown.markdown(self.stream_message_text, extensions=['fenced_code', 'codehilite'])
+            self.stream_message_label.setText(formatted_text)
+    
     def on_answer(self, answer, question):
         # 移除“嗯🤔 让我想想哈～”提示
         last_layout = self.chat_layout.takeAt(self.chat_layout.count()-1)

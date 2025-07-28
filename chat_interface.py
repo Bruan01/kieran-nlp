@@ -70,6 +70,38 @@ class ChatCore:
         
         return response
     
+    def stream_chat(self, question, model="gpt-3.5-turbo"):
+        """流式聊天方法"""
+        # 如果没有当前对话ID，则创建新对话
+        if self.current_conversation_id is None:
+            # 获取授权码作为用户标识
+            auth_code = os.environ.get('AUTH_CODE', 'default_user')
+            # 创建新对话，仅使用当前时间作为标题
+            from datetime import datetime
+            new_conversation_title = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.current_conversation_id = self.db_manager.create_conversation(auth_code, new_conversation_title)
+        
+        # 使用当前对话的历史记录初始化内存历史记录
+        self.load_chat_history()
+        
+        # 获取当前模型
+        current_model = self.get_model(model)
+        
+        # 获取授权码作为用户标识
+        auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        
+        # 保存问题到当前对话
+        self.db_manager.save_message_to_conversation(auth_code, self.current_conversation_id, question, is_user=True)
+        
+        # 流式获取回答
+        full_response = ""
+        for chunk in current_model.stream(question):
+            full_response += chunk.content
+            yield chunk.content
+        
+        # 保存完整回答到当前对话
+        self.db_manager.save_message_to_conversation(auth_code, self.current_conversation_id, full_response, is_user=False)
+    
     def update_model(self, model_name):
         """更新模型配置"""
         self.llm.model_name = model_name

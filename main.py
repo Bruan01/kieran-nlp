@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter
+    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QComboBox, QSplitter, QMenu, QAction, QInputDialog
 )
+from PyQt5.QtCore import Qt
 from chat_interface import ChatCore
 from chat_widget import ChatWidget
 from dotenv import load_dotenv
@@ -62,6 +63,8 @@ class NLPDesktopApp(QMainWindow):
         # 对话列表
         dialog_label = QLabel("对话列表")
         self.dialog_list = QListWidget()
+        self.dialog_list.setContextMenuPolicy(Qt.CustomContextMenu)  # 启用自定义上下文菜单
+        self.dialog_list.customContextMenuRequested.connect(self.show_conversation_context_menu)
         # 添加新对话按钮
         new_dialog_btn = QPushButton("+ 新对话")
         new_dialog_btn.clicked.connect(self.create_new_conversation)
@@ -111,6 +114,9 @@ class NLPDesktopApp(QMainWindow):
         
         # 连接对话列表的点击事件
         self.dialog_list.itemClicked.connect(self.switch_conversation)
+        
+        # 连接对话列表的右键菜单事件
+        self.dialog_list.customContextMenuRequested.connect(self.show_conversation_context_menu)
         
         # 清空聊天界面，确保一开始展示空白界面
         self.model_tab.clear_chat()
@@ -203,6 +209,120 @@ class NLPDesktopApp(QMainWindow):
                 # 显示对话历史
                 self.model_tab.display_history_messages(history)
                 break
+    
+    def show_conversation_context_menu(self, position):
+        """显示对话列表的上下文菜单"""
+        # 获取右键点击的项
+        item = self.dialog_list.itemAt(position)
+        if item is not None:
+            # 创建菜单
+            menu = QMenu()
+            rename_action = QAction("重命名", self)
+            delete_action = QAction("删除", self)
+            
+            # 连接动作
+            rename_action.triggered.connect(lambda: self.rename_conversation(item))
+            delete_action.triggered.connect(lambda: self.delete_conversation(item))
+            
+            # 添加动作到菜单
+            menu.addAction(rename_action)
+            menu.addAction(delete_action)
+            
+            # 显示菜单
+            menu.exec_(self.dialog_list.mapToGlobal(position))
+    
+    def rename_conversation(self, item):
+        """重命名对话"""
+        # 获取当前对话标题
+        current_title = item.text()
+        
+        # 弹出输入对话框获取新标题
+        new_title, ok = QInputDialog.getText(self, "重命名对话", "请输入新标题:", text=current_title)
+        
+        if ok and new_title:
+            # 获取授权码作为用户标识
+            auth_code = os.environ.get('AUTH_CODE', 'default_user')
+            
+            # 从数据库获取用户的对话列表
+            conversations = self.model_tab.chat_core.db_manager.get_user_conversations(auth_code)
+            
+            # 找到选中对话的ID
+            conversation_id = None
+            for conv in conversations:
+                if conv['title'] == current_title:
+                    conversation_id = conv['id']
+                    break
+            
+            if conversation_id is not None:
+                # 更新数据库中的对话标题
+                self.model_tab.chat_core.db_manager.update_conversation_title(auth_code, conversation_id, new_title)
+                
+                # 更新列表项的显示
+                item.setText(new_title)
+                
+                # 如果是当前对话，更新ChatCore的当前对话标题
+                if self.model_tab.chat_core.current_conversation_id == conversation_id:
+                    # 重新加载对话列表
+                    self.init_conversation_list()
+    
+    def delete_conversation(self, item):
+        """删除对话"""
+        # 获取当前对话标题
+        current_title = item.text()
+        
+        # 确认删除操作
+        from PyQt5.QtWidgets import QMessageBox
+        reply = QMessageBox.question(self, '确认删除', f'确定要删除对话 "{current_title}" 吗？',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            # 获取授权码作为用户标识
+            auth_code = os.environ.get('AUTH_CODE', 'default_user')
+            
+            # 从数据库获取用户的对话列表
+            conversations = self.model_tab.chat_core.db_manager.get_user_conversations(auth_code)
+            
+            # 找到选中对话的ID
+            conversation_id = None
+            for conv in conversations:
+                if conv['title'] == current_title:
+                    conversation_id = conv['id']
+                    break
+            
+            if conversation_id is not None:
+                # 从数据库删除对话
+                self.model_tab.chat_core.db_manager.delete_conversation(auth_code, conversation_id)
+                
+                # 从列表中移除项
+                self.dialog_list.takeItem(self.dialog_list.row(item))
+                
+                # 如果删除的是当前对话，切换到第一个对话或创建新对话
+                if self.model_tab.chat_core.current_conversation_id == conversation_id:
+                    # 重置当前对话ID
+                    self.model_tab.chat_core.current_conversation_id = None
+                    
+                    # 获取剩余的对话列表
+                    remaining_conversations = self.model_tab.chat_core.db_manager.get_user_conversations(auth_code)
+                    
+                    if remaining_conversations:
+                        # 切换到第一个对话
+                        first_conv = remaining_conversations[0]
+                        self.model_tab.chat_core.current_conversation_id = first_conv['id']
+                        
+                        # 获取对话历史
+                        history = self.model_tab.chat_core.db_manager.get_conversation_history(auth_code, first_conv['id'])
+                        
+                        # 清空聊天界面
+                        self.model_tab.clear_chat()
+                        
+                        # 显示对话历史
+                        self.model_tab.display_history_messages(history)
+                    else:
+                        # 没有剩余对话，清空聊天界面
+                        self.model_tab.clear_chat()
+                
+                # 重新加载对话列表
+                self.init_conversation_list()
     
     def display_chat_history(self):
         """显示聊天历史记录"""

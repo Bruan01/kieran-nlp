@@ -58,6 +58,22 @@ class ChatDatabase:
         conn.commit()
         conn.close()
     
+    def update_conversation_title(self, auth_code, conversation_id, new_title):
+        """更新对话标题"""
+        user_id = self.get_or_create_user(auth_code)
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE conversations 
+            SET title = ? 
+            WHERE id = ? AND user_id = ?
+        """, (new_title, conversation_id, user_id))
+        
+        conn.commit()
+        conn.close()
+    
     def get_or_create_user(self, auth_code):
         """获取或创建用户"""
         conn = sqlite3.connect(self.db_path)
@@ -179,12 +195,28 @@ class ChatDatabase:
             WHERE user_id = ? AND conversation_id = ?
             ORDER BY timestamp ASC 
             LIMIT ?
-        """, (user_id, conversation_id, limit))
+        """ , (user_id, conversation_id, limit))
         
         history = cursor.fetchall()
         conn.close()
         
         return [dict(row) for row in history]
+    
+    def delete_conversation(self, auth_code, conversation_id):
+        """删除对话及其相关历史记录"""
+        user_id = self.get_or_create_user(auth_code)
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # 删除对话相关的历史记录
+        cursor.execute("DELETE FROM chat_history WHERE user_id = ? AND conversation_id = ?", (user_id, conversation_id))
+        
+        # 删除对话
+        cursor.execute("DELETE FROM conversations WHERE id = ? AND user_id = ?", (conversation_id, user_id))
+        
+        conn.commit()
+        conn.close()
     
     def save_message_to_conversation(self, auth_code, conversation_id, message, is_user):
         """保存对话消息到特定对话"""
