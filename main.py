@@ -47,12 +47,17 @@ class NLPDesktopApp(QMainWindow):
         self.theme_combo = QComboBox()
         self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
-        
-        # 用户状态
-        user_label = QLabel("用户：已登录 授权码: MASHFEBHIWBDI221")
-        sidebar_layout.addWidget(theme_label)
-        sidebar_layout.addWidget(self.theme_combo)
-        sidebar_layout.addWidget(user_label)
+
+        # 从文件获取当前授权码
+        with open(AUTH_MARKER_FILE_PATH, 'r') as f:
+            content = f.read()
+            if "Authorized = 「" in content:
+                authorized_code = content.split("「")[1].split("」")[0]
+                # 用户状态
+                user_label = QLabel(f"用户：已登录 授权码: {authorized_code}")
+                sidebar_layout.addWidget(theme_label)
+                sidebar_layout.addWidget(self.theme_combo)
+                sidebar_layout.addWidget(user_label)
 
         # 对话列表
         dialog_label = QLabel("对话列表")
@@ -249,6 +254,47 @@ class NLPDesktopApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = NLPDesktopApp()
-    window.show()
-    sys.exit(app.exec_())
+    # 设置应用程序图标
+    from PyQt5.QtGui import QIcon
+    app.setWindowIcon(QIcon('asset/kieran-nlp.png'))
+    
+    # 授权码验证（仅在首次使用时）
+    import sys
+    import os
+    from PyQt5.QtWidgets import QApplication, QInputDialog, QMessageBox
+    
+    # 定义授权标记文件路径
+    AUTH_MARKER_FILE = "kieran_nlp_authorized"
+    AUTH_CODE_LIST_FILE = './authorized/auth_code.txt'
+    # 预设的授权码 从加密文件中获取
+    with open(AUTH_CODE_LIST_FILE, 'r') as f:
+        PRESET_AUTH_CODE_list = f.read().split('\n')
+
+
+    # 检查授权标记文件是否存在
+    AUTH_MARKER_FILE_PATH = os.path.join(os.getcwd(), 'authorized', '.kieran_nlp_authorized')
+    if not os.path.exists(AUTH_MARKER_FILE_PATH):
+        # 授权标记文件不存在，需要进行授权验证
+        # 弹出输入对话框获取授权码
+        auth_code, ok = QInputDialog.getText(None, '首次使用授权验证', '请输入授权码:')
+
+        for PRESET_AUTH_CODE in PRESET_AUTH_CODE_list:
+            if ok and auth_code == PRESET_AUTH_CODE:
+                # 授权码正确，创建授权标记文件
+                with open(AUTH_MARKER_FILE, 'w') as f:
+                    f.write(f"Authorized = 「{auth_code}」")
+                    # 并且设置为环境变量
+                    os.environ['AUTH_CODE'] = auth_code
+                # 启动主窗口
+                window = NLPDesktopApp()
+                window.show()
+                sys.exit(app.exec_())
+        # 授权码错误或用户取消输入，显示错误信息并退出
+        QMessageBox.critical(None, '授权失败', '授权码错误或未输入，程序将退出。')
+        sys.exit(1)
+
+    else:
+        # 启动主窗口
+        window = NLPDesktopApp()
+        window.show()
+        sys.exit(app.exec_())
