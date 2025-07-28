@@ -61,10 +61,14 @@ class NLPDesktopApp(QMainWindow):
 
         # 对话列表
         dialog_label = QLabel("对话列表")
-        dialog_list = QListWidget()
-        dialog_list.addItems(["对话1", "对话2"])
+        self.dialog_list = QListWidget()
+        # 添加新对话按钮
+        new_dialog_btn = QPushButton("+ 新对话")
+        new_dialog_btn.clicked.connect(self.create_new_conversation)
+        
         sidebar_layout.addWidget(dialog_label)
-        sidebar_layout.addWidget(dialog_list)
+        sidebar_layout.addWidget(self.dialog_list)
+        sidebar_layout.addWidget(new_dialog_btn)
         sidebar_layout.addStretch()
 
         # 右侧主内容区
@@ -100,6 +104,15 @@ class NLPDesktopApp(QMainWindow):
         
         # 初始化默认主题
         self.on_theme_changed(self.theme_combo.currentText())
+        
+        # 初始化对话列表
+        self.init_conversation_list()
+        
+        # 连接对话列表的点击事件
+        self.dialog_list.itemClicked.connect(self.switch_conversation)
+        
+        # 清空聊天界面，确保一开始展示空白界面
+        self.model_tab.clear_chat()
 
     def on_model_changed(self, model_name):
         """当模型切换时更新提示信息和ChatCore配置"""
@@ -250,6 +263,83 @@ class NLPDesktopApp(QMainWindow):
         
         # 通知聊天组件更新主题
         self.model_tab.update_theme(theme_name)
+    
+    def init_conversation_list(self):
+        """初始化对话列表"""
+        # 获取授权码作为用户标识
+        auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        # 从数据库获取用户的对话列表
+        conversations = self.model_tab.chat_core.db_manager.get_user_conversations(auth_code)
+        
+        # 清空当前列表
+        self.dialog_list.clear()
+        
+        # 添加对话到列表
+        for conv in conversations:
+            self.dialog_list.addItem(conv['title'])
+        
+        # 如果没有对话，不创建默认对话，等待用户输入第一个问题时再创建
+    
+    def create_new_conversation(self, first_question=""):
+        """创建新对话"""
+        # 获取授权码作为用户标识
+        auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        
+        # 生成基于当前时间的标题
+        from datetime import datetime
+        new_conversation_title = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 创建新对话
+        conversation_id = self.model_tab.chat_core.db_manager.create_conversation(auth_code, new_conversation_title)
+        
+        # 更新ChatCore的当前对话ID
+        self.model_tab.chat_core.current_conversation_id = conversation_id
+        
+        # 清空聊天界面
+        self.model_tab.clear_chat()
+        
+        # 重新加载对话列表
+        self.init_conversation_list()
+    
+    def switch_conversation(self, item):
+        """切换对话"""
+        # 获取授权码作为用户标识
+        auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        # 获取选中的对话标题
+        selected_title = item.text()
+        
+        # 从数据库获取用户的对话列表
+        conversations = self.model_tab.chat_core.db_manager.get_user_conversations(auth_code)
+        
+        # 找到选中对话的ID
+        for conv in conversations:
+            if conv['title'] == selected_title:
+                # 更新ChatCore的当前对话ID
+                self.model_tab.chat_core.current_conversation_id = conv['id']
+                
+                # 获取对话历史
+                history = self.model_tab.chat_core.db_manager.get_conversation_history(auth_code, conv['id'])
+                
+                # 清空聊天界面
+                self.model_tab.clear_chat()
+                
+                # 显示对话历史
+                self.model_tab.display_history_messages(history)
+                break
+    
+    def display_chat_history(self):
+        """显示聊天历史记录"""
+        # 获取授权码作为用户标识
+        auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        # 检查是否有当前对话ID
+        if self.model_tab.chat_core.current_conversation_id:
+            # 从数据库获取当前对话的历史
+            history = self.model_tab.chat_core.db_manager.get_conversation_history(auth_code, self.model_tab.chat_core.current_conversation_id)
+            # 在聊天界面显示历史消息
+            self.model_tab.display_history_messages(history)
+        else:
+            # 如果没有当前对话，清空聊天界面
+            self.model_tab.clear_chat()
 
 
 if __name__ == "__main__":
@@ -288,6 +378,7 @@ if __name__ == "__main__":
                     os.environ['AUTH_CODE'] = auth_code
                 # 启动主窗口
                 window = NLPDesktopApp()
+                # 不加载用户的对话历史，保持空白界面
                 window.show()
                 sys.exit(app.exec_())
         # 授权码错误或用户取消输入，显示错误信息并退出
@@ -297,5 +388,6 @@ if __name__ == "__main__":
     else:
         # 启动主窗口
         window = NLPDesktopApp()
+        # 不加载用户的对话历史，保持空白界面
         window.show()
         sys.exit(app.exec_())

@@ -113,6 +113,13 @@ class ChatWidget(QWidget):
             "user": "background-color: #001100; border-radius: 15px; padding: 12px; margin: 5px;",
             "assistant": "background-color: #000000; border-radius: 15px; padding: 12px; margin: 5px;",
         }
+    
+    def display_history_messages(self, history):
+        """显示从数据库加载的历史消息"""
+        for entry in history:
+            is_user = entry['is_user']
+            message = entry['message']
+            self.add_message(message, is_user=is_user, show_copy=not is_user)
 
     def add_message(self, text, is_user=True, question=None,show_copy=False):
         msg_layout = QHBoxLayout()
@@ -283,3 +290,18 @@ class ChatWidget(QWidget):
                 widget.setStyleSheet(self.pink_theme_styles["assistant"])
             elif self.current_theme == "科技风格主题":
                 widget.setStyleSheet(self.tech_theme_styles["assistant"])
+    
+    def clear_chat(self):
+         """清空聊天界面"""
+         # 清空聊天记录显示区域
+         # 逐个删除布局中的所有项目
+         while self.chat_layout.count():
+             item = self.chat_layout.takeAt(0)
+             if item.widget():
+                 item.widget().deleteLater()
+             elif item.layout():
+                 # 递归删除布局中的所有控件
+                 self._clear_layout(item.layout())
+         
+         # 注意：我们不重新初始化整个UI，只需要清空聊天记录即可
+         # self.init_ui()
