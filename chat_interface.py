@@ -36,7 +36,7 @@ class ChatCore:
 
         self.db_manager = ChatDatabase(os.path.join(os.path.dirname(__file__), 'database', 'chat_history.db'))
         # 当前模型
-        self.current_model = "gpt-3.5-turbo"
+        self.current_model = "deepseek-ai/DeepSeek-V3"
         # 当前对话ID
         self.current_conversation_id = None
         
@@ -48,7 +48,7 @@ class ChatCore:
         
         # 初始化 langchain 的聊天模型
         self.llm = ChatOpenAI(
-            model="deepseek-ai/DeepSeek-V3",
+            model=self.current_model,
             openai_api_key=api_key,
             openai_api_base=self.api_url.replace("/chat/completions", ""),  # 调整 base URL
             temperature=0.7
@@ -56,7 +56,7 @@ class ChatCore:
         
         # 创建提示模板
         self.prompt = PromptTemplate.from_template("""
-        你是一个AI助手，你需要根据用户的提问提供帮助。
+        你是一个AI助手，你需要根据用户的提问提供帮助，需要最真实的回答，不允许欺骗用户
         
         历史对话:
         {history}
@@ -151,7 +151,7 @@ class ChatCore:
             api_url = 'http://' + api_url
         
         streaming_llm = ChatOpenAI(
-            model="deepseek-ai/DeepSeek-V3",
+            model=self.current_model,
             openai_api_key=self.api_key,
             openai_api_base=api_url.replace("/chat/completions", ""),
             temperature=0.7,
@@ -183,7 +183,23 @@ class ChatCore:
     
     def update_model(self, model_name):
         """更新模型配置"""
-        self.llm.model_name = model_name
+        self.current_model = model_name
+        # 重新创建LLM实例以应用新模型
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=self.api_key,
+            openai_api_base=self.api_url.replace("/chat/completions", ""),
+            temperature=0.7
+        )
+        
+        # 重新创建对话链
+        self.conversation_chain = RunnableWithMessageHistory(
+            self.prompt | self.llm,
+            self.get_session_history,
+            input_messages_key="input",
+            history_messages_key="history"
+        )
+    
     
     def get_model(self, model_name):
         """获取指定的模型"""

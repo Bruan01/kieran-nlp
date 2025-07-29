@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal ,QTimer
 from PyQt5.QtGui import QPixmap
 import markdown
+import os
 
 class StreamChatWorker(QThread):
     finished = pyqtSignal(str)
@@ -15,6 +16,11 @@ class StreamChatWorker(QThread):
         self.chat_core = chat_core
         self.question = question
         self.model_name = model_name
+        self._is_cancelled = False  # 添加取消标志位
+        
+    def cancel(self):
+        """设置取消标志位"""
+        self._is_cancelled = True
         
     def run(self):
         # 使用流式方式获取回答
@@ -22,6 +28,10 @@ class StreamChatWorker(QThread):
         try:
             # 使用流式聊天方法
             for chunk in self.chat_core.stream_chat(self.question, model=self.model_name):
+                # 检查是否已取消
+                if self._is_cancelled:
+                    self.finished.emit("对话生成已取消")
+                    return
                 full_answer += chunk
                 self.stream_data.emit(chunk)
             self.finished.emit(full_answer)
@@ -67,14 +77,23 @@ class ChatWidget(QWidget):
         self.model_base_button = QPushButton("发送")
         self.model_base_button.setFixedHeight(40)
         
+        # 添加取消按钮
+        self.cancel_button = QPushButton("取消")
+        self.cancel_button.setFixedHeight(40)
+        self.cancel_button.setStyleSheet("background-color: red; color: white;")
+        self.cancel_button.setVisible(False)  # 初始隐藏取消按钮
+        
+        
         input_layout.addWidget(self.model_base_input)
         input_layout.addWidget(self.model_base_button)
+        input_layout.addWidget(self.cancel_button)
 
         main_layout.addWidget(title)
         main_layout.addWidget(self.scroll_area)
         main_layout.addLayout(input_layout)
 
         self.model_base_button.clicked.connect(self.run_model_base)
+        self.cancel_button.clicked.connect(self.cancel_generation)
         # 添加使用 Enter 键发送消息的功能
         self.model_base_input.installEventFilter(self)
         self.setLayout(main_layout)
@@ -181,6 +200,9 @@ class ChatWidget(QWidget):
             self.worker.stream_data.connect(self.on_stream_data)
             self.worker.finished.connect(lambda answer: self.on_answer(answer, question))
             self.worker.start()
+            # 显示取消按钮
+            self.cancel_button.setVisible(True)
+            self.model_base_button.setVisible(False)
             # 保存流式消息的引用，以便更新
             self.stream_message_label = None
             self.stream_message_text = ""
@@ -241,6 +263,10 @@ class ChatWidget(QWidget):
         if not self.scroll_area:
             return
             
+        # 隐藏取消按钮
+        self.cancel_button.setVisible(False)
+        self.model_base_button.setVisible(True)
+        
         # 移除"嗯🤔 让我想想哈～"提示
         last_layout = self.chat_layout.takeAt(self.chat_layout.count()-1)
         if last_layout:
@@ -277,9 +303,57 @@ class ChatWidget(QWidget):
                 self._clear_layout(item.layout())
         layout.deleteLater()
 
-
+    def cancel_generation(self):
+        """取消当前的对话生成"""
+        # 调用worker的取消方法
+        if self.worker and self.worker.isRunning():
+            self.worker.cancel()
+        
+        # 隐藏取消按钮，显示发送按钮
+        self.cancel_button.setVisible(False)
+        self.model_base_button.setVisible(True)
+        
+        # 移除流式消息标签
+        if self.stream_message_label:
+            # 找到包含流式消息标签的布局并删除
+            for i in range(self.chat_layout.count()):
+                layout_item = self.chat_layout.itemAt(i)
+                if layout_item and layout_item.widget():
+                    widget = layout_item.widget()
+                    # 检查widget中是否包含stream_message_label
+                    if self.stream_message_label in widget.findChildren(QLabel):
+                        widget.deleteLater()
+                        break
+            self.stream_message_label = None
+            self.stream_message_text = ""
+        
+        # 如果没有找到流式消息标签，尝试删除最后一个加载提示
+        else:
+            if self.chat_layout.count() > 0:
+                last_item = self.chat_layout.itemAt(self.chat_layout.count() - 1)
+                if last_item and last_item.widget():
+                    last_widget = last_item.widget()
+                    # 检查是否是加载提示消息
+                    last_msg_label = None
+                    for i in range(last_widget.layout().count()):
+                        item = last_widget.layout().itemAt(i)
+                        if item.widget() and isinstance(item.widget(), QLabel):
+                            last_msg_label = item.widget()
+                            break
+                    if last_msg_label and "嗯🤔,让我想想哈～" in last_msg_label.text():
+                        last_widget.deleteLater()
+        
+        # 显示取消消息并写入数据库
+        cancel_message = "🤭 好像发生了一些意外，是不是我又说错话了？ "
+        self.add_message(cancel_message, is_user=False, show_copy=False)
+        
+        # 获取授权码
+        auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        # 保存取消消息到数据库
+        if hasattr(self.chat_core, 'db_manager') and self.chat_core.current_conversation_id:
+            self.chat_core.db_manager.save_message_to_conversation(
+                auth_code, self.chat_core.current_conversation_id, cancel_message, False)
     
-
     def update_theme(self, theme_name):
         """更新聊天界面主题"""
         self.current_theme = theme_name
