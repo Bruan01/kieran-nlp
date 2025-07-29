@@ -42,3 +42,6 @@ log/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Authorization files
+authorized/
