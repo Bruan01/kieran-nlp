@@ -9,11 +9,13 @@ load_dotenv()
 api_key = os.getenv("API_KEY")
 api_url = os.getenv("API_URL")
 print(api_key)
+print(os.getenv("AUTH_CODE"))
+# os.environ['AUTH_CODE'] = 'rJBYWewR!7b>;L6i'
+print(os.getenv("AUTH_CODE"))
+# url = "https://api.siliconflow.cn/v1/user/info"
 
-url = "https://api.siliconflow.cn/v1/user/info"
+# headers = {"Authorization": f"Bearer {api_key}"}
 
-headers = {"Authorization": f"Bearer {api_key}"}
+# response = requests.get(url, headers=headers)
 
-response = requests.get(url, headers=headers)
-
-print(response.json())
+# print(response.json())

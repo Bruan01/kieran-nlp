@@ -6,6 +6,9 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal ,QTimer
 from PyQt5.QtGui import QPixmap
 import markdown
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.logger import Logger
 
 class StreamChatWorker(QThread):
     finished = pyqtSignal(str)
@@ -17,6 +20,9 @@ class StreamChatWorker(QThread):
         self.question = question
         self.model_name = model_name
         self._is_cancelled = False  # 添加取消标志位
+        
+        # 初始化日志记录器
+        self.logger = Logger()
         
     def cancel(self):
         """设置取消标志位"""
@@ -36,6 +42,9 @@ class StreamChatWorker(QThread):
                 self.stream_data.emit(chunk)
             self.finished.emit(full_answer)
         except Exception as e:
+            error_msg = f"流式生成对话时出错: {str(e)}"
+            # 记录异常日志
+            self.logger.log_exception(error_msg)
             self.finished.emit(f"错误：{str(e)}")
 
 class ChatWidget(QWidget):
@@ -101,6 +110,11 @@ class ChatWidget(QWidget):
         # 初始化主题
         self.current_theme = "浅色主题"
         
+        # 初始化分页加载相关属性
+        self.page_size = 20  # 每页加载的消息数量
+        self.current_page = 0  # 当前页码
+        self.loaded_history = []  # 已加载的历史消息
+        
     def apply_qss_style(self):
         """应用QSS样式"""
         try:
@@ -122,11 +136,62 @@ class ChatWidget(QWidget):
         self.apply_qss_style()
     
     def display_history_messages(self, history):
-        """显示从数据库加载的历史消息"""
-        for entry in history:
+        """显示从数据库加载的历史消息（分页加载）"""
+        # 重置分页状态
+        self.current_page = 0
+        self.loaded_history = []
+        
+        # 清空当前聊天界面
+        self.clear_chat()
+        
+        # 加载第一页
+        self.load_more_history(history)
+    
+    def load_more_history(self, history):
+        """加载更多历史消息（分页加载）"""
+        # 计算当前页的起始和结束索引
+        start_index = self.current_page * self.page_size
+        end_index = start_index + self.page_size
+        
+        # 获取当前页需要显示的消息
+        page_messages = history[start_index:end_index]
+        
+        # 如果没有更多消息，直接返回
+        if not page_messages:
+            return
+        
+        # 将当前页消息添加到已加载历史中
+        self.loaded_history.extend(page_messages)
+        
+        # 显示当前页消息
+        for entry in page_messages:
             is_user = entry['is_user']
             message = entry['message']
             self.add_message(message, is_user=is_user, show_copy=not is_user)
+        
+        # 更新页码
+        self.current_page += 1
+        
+        # 连接滚动条的滚动事件，实现懒加载
+        self.scroll_area.verticalScrollBar().valueChanged.connect(self.check_scroll_position)
+    
+    def check_scroll_position(self, value):
+        """检查滚动位置，实现懒加载"""
+        # 获取滚动条的最大值和当前值
+        scroll_bar = self.scroll_area.verticalScrollBar()
+        max_value = scroll_bar.maximum()
+        current_value = scroll_bar.value()
+        
+        # 如果滚动到顶部，加载更多历史消息
+        if current_value == 0 and self.current_page > 0:
+            # 这里可以实现向上滚动加载更多历史消息的逻辑
+            # 为简化实现，我们暂时不处理向上滚动加载
+            pass
+        
+        # 如果滚动到底部，可以在这里添加加载更多消息的逻辑（如果需要）
+        # 例如：
+        # if current_value == max_value:
+        #     self.load_next_page()
 
     def add_message(self, text, is_user=True, question=None, show_copy=False, return_label=False):
         msg_layout = QHBoxLayout()
@@ -289,6 +354,20 @@ class ChatWidget(QWidget):
                     sub_layout.deleteLater()
         # 添加真正的回复，并带问题用于重新生成
         self.add_message(answer, is_user=False, question=question,show_copy=True)
+        
+        # 移除重复的数据库保存逻辑，因为stream_chat方法中已经保存过了
+        # try:
+        #     auth_code = os.environ.get('AUTH_CODE', 'default_user')
+        #     self.chat_core.db_manager.save_message_to_conversation(
+        #         auth_code, 
+        #         self.chat_core.current_conversation_id, 
+        #         answer, 
+        #         is_user=False
+        #     )
+        # except Exception as e:
+        #     # 记录错误日志
+        #     logger = Logger()
+        #     logger.log_exception(f"保存回答到数据库时出错: {str(e)}")
         
         # 重置worker引用
         self.worker = None

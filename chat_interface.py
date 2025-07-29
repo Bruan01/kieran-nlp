@@ -2,6 +2,14 @@
 import requests
 import json
 import os
+import sys
+
+# 获取当前文件的目录
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# 将项目根目录添加到sys.path
+ROOT_DIR = os.path.dirname(CURRENT_DIR)
+sys.path.append(ROOT_DIR)
+
 from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationChain
@@ -14,6 +22,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
+from config.settings import DATABASE_PATH, DEFAULT_MODEL
 
 
 class StreamCallbackHandler(BaseCallbackHandler):
@@ -34,9 +43,9 @@ class ChatCore:
         self.api_url = api_url
         # 初始化数据库管理器
 
-        self.db_manager = ChatDatabase(os.path.join(os.path.dirname(__file__), 'database', 'chat_history.db'))
+        self.db_manager = ChatDatabase(DATABASE_PATH)
         # 当前模型
-        self.current_model = "deepseek-ai/DeepSeek-V3"
+        self.current_model = DEFAULT_MODEL
         # 当前对话ID
         self.current_conversation_id = None
         

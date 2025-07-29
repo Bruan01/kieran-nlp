@@ -1,11 +1,21 @@
 import sqlite3
 import os
-from datetime import datetime
+import sys
+
+# 获取当前文件的目录
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# 将项目根目录添加到sys.path
+ROOT_DIR = os.path.dirname(CURRENT_DIR)
+sys.path.append(ROOT_DIR)
+
+from config.settings import DATABASE_PATH
+from utils.logger import Logger
 
 class ChatDatabase:
-    def __init__(self, db_path="./chat_history.db"):
+    def __init__(self, db_path=None):
         """初始化数据库连接"""
-        self.db_path = db_path
+        self.db_path = db_path or DATABASE_PATH
+        self.logger = Logger()  # 初始化日志记录器
         self.init_db()
     
     def init_db(self):
@@ -53,6 +63,8 @@ class ChatDatabase:
         except sqlite3.OperationalError as e:
             # 列已存在，忽略错误
             if "duplicate column name" not in str(e):
+                error_msg = f"初始化数据库时出错: {str(e)}"
+                self.logger.log_exception(error_msg)
                 raise
         
         conn.commit()
@@ -96,40 +108,50 @@ class ChatDatabase:
     
     def save_message(self, auth_code, message, is_user):
         """保存对话消息"""
-        user_id = self.get_or_create_user(auth_code)
-        
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO chat_history (user_id, message, is_user) 
-            VALUES (?, ?, ?)
-        """, (user_id, message, is_user))
-        
-        conn.commit()
-        conn.close()
+        try:
+            user_id = self.get_or_create_user(auth_code)
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO chat_history (user_id, message, is_user) 
+                VALUES (?, ?, ?)
+            """, (user_id, message, is_user))
+            
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            error_msg = f"保存消息时出错: {str(e)}"
+            self.logger.log_exception(error_msg)
+            raise
     
     def get_chat_history(self, auth_code, limit=50):
         """获取用户的对话历史"""
-        user_id = self.get_or_create_user(auth_code)
-        
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # 使结果可以通过列名访问
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT message, is_user, timestamp 
-            FROM chat_history 
-            WHERE user_id = ? 
-            ORDER BY timestamp ASC 
-            LIMIT ?
-        """, (user_id, limit))
-        
-        history = cursor.fetchall()
-        conn.close()
-        
-        # 转换为字典列表
-        return [dict(row) for row in history]
+        try:
+            user_id = self.get_or_create_user(auth_code)
+            
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row  # 使结果可以通过列名访问
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT message, is_user, timestamp 
+                FROM chat_history 
+                WHERE user_id = ? 
+                ORDER BY timestamp ASC 
+                LIMIT ?
+            """, (user_id, limit))
+            
+            history = cursor.fetchall()
+            conn.close()
+            
+            # 转换为字典列表
+            return [dict(row) for row in history]
+        except Exception as e:
+            error_msg = f"获取聊天历史时出错: {str(e)}"
+            self.logger.log_exception(error_msg)
+            raise
     
     def clear_user_history(self, auth_code):
         """清除用户的对话历史"""
@@ -145,21 +167,26 @@ class ChatDatabase:
     
     def create_conversation(self, auth_code, title):
         """为用户创建新对话"""
-        user_id = self.get_or_create_user(auth_code)
-        
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO conversations (user_id, title) 
-            VALUES (?, ?)
-        """, (user_id, title))
-        
-        conn.commit()
-        conversation_id = cursor.lastrowid
-        conn.close()
-        
-        return conversation_id
+        try:
+            user_id = self.get_or_create_user(auth_code)
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO conversations (user_id, title) 
+                VALUES (?, ?)
+            """, (user_id, title))
+            
+            conn.commit()
+            conversation_id = cursor.lastrowid
+            conn.close()
+            
+            return conversation_id
+        except Exception as e:
+            error_msg = f"创建对话时出错: {str(e)}"
+            self.logger.log_exception(error_msg)
+            raise
     
     def get_user_conversations(self, auth_code):
         """获取用户的所有对话"""
@@ -181,8 +208,8 @@ class ChatDatabase:
         
         return [dict(row) for row in conversations]
     
-    def get_conversation_history(self, auth_code, conversation_id, limit=50):
-        """获取特定对话的历史记录"""
+    def get_conversation_history(self, auth_code, conversation_id, limit=50, offset=0):
+        """获取特定对话的历史记录（支持分页）"""
         user_id = self.get_or_create_user(auth_code)
         
         conn = sqlite3.connect(self.db_path)
@@ -194,8 +221,8 @@ class ChatDatabase:
             FROM chat_history 
             WHERE user_id = ? AND conversation_id = ?
             ORDER BY timestamp ASC 
-            LIMIT ?
-        """ , (user_id, conversation_id, limit))
+            LIMIT ? OFFSET ?
+        """ , (user_id, conversation_id, limit, offset))
         
         history = cursor.fetchall()
         conn.close()

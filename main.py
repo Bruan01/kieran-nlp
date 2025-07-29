@@ -6,9 +6,11 @@ from PyQt5.QtCore import Qt, QTimer
 from chat_interface import ChatCore
 from chat_widget import ChatWidget
 from dotenv import load_dotenv
+from utils.logger import Logger
 import os
 import sys
 import requests
+from config.settings import API_MODELS, THEMES, THEME_NAME_TO_QSS, DEFAULT_QSS, AUTH_MARKER_FILE_PATH
 
 # 加载.env
 load_dotenv()
@@ -42,22 +44,24 @@ class SettingsDialog(QDialog):
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"获取用户信息失败: {response.status_code}")
+                error_msg = f"获取用户信息失败: {response.status_code}"
+                print(error_msg)
+                # 记录错误日志
+                if hasattr(self, 'parent') and hasattr(self.parent(), 'logger'):
+                    self.parent().logger.log_error(error_msg)
                 return None
         except Exception as e:
-            print(f"获取用户信息时出错: {e}")
+            error_msg = f"获取用户信息时出错: {e}"
+            print(error_msg)
+            # 记录异常日志
+            if hasattr(self, 'parent') and hasattr(self.parent(), 'logger'):
+                self.parent().logger.log_exception(error_msg)
             return None
     
     def apply_theme(self):
         """应用当前主题样式"""
         # 根据当前主题加载对应的QSS样式表
-        theme_name2qss_dir = { 
-            "浅色主题": "./style/iphone_style.qss", 
-            "深色主题": "./style/dark_style.qss", 
-            "浅粉色少女心主题": "./style/pink_style.qss", 
-            "科技风格主题": "./style/technology_style.qss" 
-        }
-        qss_file = theme_name2qss_dir.get(self.current_theme, './style/dark_style.qss')
+        qss_file = THEME_NAME_TO_QSS.get(self.current_theme, DEFAULT_QSS)
         try:
             with open(qss_file, 'r', encoding='utf-8') as f:
                 style_sheet = f.read()
@@ -136,7 +140,7 @@ class SettingsDialog(QDialog):
         # 主题设置
         theme_label = QLabel("外观主题")
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
+        self.theme_combo.addItems(THEMES)
         self.theme_combo.setCurrentText(self.current_theme)
         
         layout.addWidget(theme_label)
@@ -172,6 +176,9 @@ class NLPDesktopApp(QMainWindow):
         super().__init__()
         self.setWindowTitle("Kieran-NLP")
         self.resize(1280, 720)
+        
+        # 初始化日志记录器
+        self.logger = Logger()
 
         # 左侧侧边栏
         sidebar = QWidget()
@@ -181,22 +188,7 @@ class NLPDesktopApp(QMainWindow):
         # API切换
         api_label = QLabel("API 切换")
         self.api_combo = QComboBox()
-        self.api_combo.addItems(["deepseek-ai/DeepSeek-V3",
-        "deepseek-ai/DeepSeek-R1",
-        "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
-        "deepseek-ai/deepseek-vl2",
-        "Qwen/QwQ-32B",
-        "Qwen/Qwen2.5-VL-32B-Instruct",
-        "Qwen/Qwen2.5-Coder-32B-Instruct",
-        "Qwen/Qwen3-235B-A22B-Instruct-2507",
-        "Tongyi-Zhiwen/QwenLong-L1-32B",
-        "tencent/Hunyuan-A13B-Instruct",
-        "Tongyi-Zhiwen/QwenLong-L1-32B",
-        "THUDM/glm-4-9b-chat",
-        "THUDM/GLM-4.1V-9B-Thinking",
-        "THUDM/GLM-Z1-32B-0414",
-        "baidu/ERNIE-4.5-300B-A47B",
-        ])
+        self.api_combo.addItems(API_MODELS)
         
         # 添加模型切换提示标签
         self.model_tip_label = QLabel("")
@@ -213,7 +205,7 @@ class NLPDesktopApp(QMainWindow):
         theme_label = QLabel("主题切换")
         theme_label.setVisible(False)  # 隐藏主题标签
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["浅色主题", "深色主题", "浅粉色少女心主题", "科技风格主题"])
+        self.theme_combo.addItems(THEMES)
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setVisible(False)  # 隐藏主题选择框
 
@@ -322,13 +314,7 @@ class NLPDesktopApp(QMainWindow):
     def on_theme_changed(self, theme_name):
         """当主题切换时更新界面样式"""
         # 根据主题名称加载对应的QSS样式表
-        theme_name2qss_dir = { 
-            "浅色主题":"./style/iphone_style.qss", 
-            "深色主题":"./style/dark_style.qss", 
-            "浅粉色少女心主题":"./style/pink_style.qss", 
-            "科技风格主题":"./style/technology_style.qss" 
-         }
-        qss_file = theme_name2qss_dir.get(theme_name, 'iphone_style.qss')  # 默认使用iPhone风格
+        qss_file = THEME_NAME_TO_QSS.get(theme_name, DEFAULT_QSS)  # 默认使用iPhone风格
         try:
             with open(qss_file, 'r', encoding='utf-8') as f:
                 style_sheet = f.read()
@@ -401,8 +387,9 @@ class NLPDesktopApp(QMainWindow):
                 # 更新ChatCore的当前对话ID
                 self.model_tab.chat_core.current_conversation_id = conv['id']
                 
-                # 获取对话历史
-                history = self.model_tab.chat_core.db_manager.get_conversation_history(auth_code, conv['id'])
+                # 获取对话历史（分页加载）
+                history = self.model_tab.chat_core.db_manager.get_conversation_history(
+                    auth_code, conv['id'], limit=100)  # 一次性获取前100条消息
                 
                 # 清空聊天界面
                 self.model_tab.clear_chat()
@@ -514,8 +501,9 @@ class NLPDesktopApp(QMainWindow):
                         first_conv = remaining_conversations[0]
                         self.model_tab.chat_core.current_conversation_id = first_conv['id']
                         
-                        # 获取对话历史
-                        history = self.model_tab.chat_core.db_manager.get_conversation_history(auth_code, first_conv['id'])
+                        # 获取对话历史（分页加载）
+                        history = self.model_tab.chat_core.db_manager.get_conversation_history(
+                            auth_code, first_conv['id'], limit=100)  # 一次性获取前100条消息
                         
                         # 清空聊天界面
                         self.model_tab.clear_chat()
@@ -549,13 +537,14 @@ class NLPDesktopApp(QMainWindow):
                 self.on_theme_changed(selected_theme)
     
     def display_chat_history(self):
-        """显示聊天历史记录"""
+        """显示聊天历史记录（分页加载）"""
         # 获取授权码作为用户标识
         auth_code = os.environ.get('AUTH_CODE', 'default_user')
         # 检查是否有当前对话ID
         if self.model_tab.chat_core.current_conversation_id:
-            # 从数据库获取当前对话的历史
-            history = self.model_tab.chat_core.db_manager.get_conversation_history(auth_code, self.model_tab.chat_core.current_conversation_id)
+            # 从数据库获取当前对话的历史（分页加载）
+            history = self.model_tab.chat_core.db_manager.get_conversation_history(
+                auth_code, self.model_tab.chat_core.current_conversation_id, limit=100)  # 一次性获取前100条消息
             # 在聊天界面显示历史消息
             self.model_tab.display_history_messages(history)
         else:
@@ -607,6 +596,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     else:
+        # 从授权标记文件中读取授权码并设置环境变量
+        with open(AUTH_MARKER_FILE_PATH, 'r') as f:
+            content = f.read()
+            if "Authorized = 「" in content:
+                auth_code = content.split("「")[1].split("」")[0]
+                os.environ['AUTH_CODE'] = auth_code
         # 启动主窗口
         window = NLPDesktopApp()
         # 加载用户的对话历史
